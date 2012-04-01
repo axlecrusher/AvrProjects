@@ -27,27 +27,43 @@ DOUT PC2 //input from ram
 inline void SetAddress(uint8_t addr) __attribute__((always_inline));
 inline void SetAddress(uint8_t addr)
 {
-	//11 clocks instructions
-	PORTD = addr & ~_BV(7); //3 clocks
+	//7 clocks
+//	PORTD = addr & ~_BV(7); //3 clocks
+	PORTD = addr; //don't care about BV(7), its always high on the chip, 1 clock
 	addr >>= 1;
 	PORTB = (PORTB & ~_BV(6)) | (addr & _BV(6)); //6 clocks
 //	PORTB = addr & _BV(6);
 }
 
+inline void SetAddressDestructive(uint8_t addr) __attribute__((always_inline));
+inline void SetAddressDestructive(uint8_t addr)
+{
+	//5 clocks
+	PORTD = addr; //don't care about BV(7), its always high on the chip, 1 clock
+
+	//4 clocks
+	addr >>= 1;
+	PORTB = (addr & _BV(6)) | _BV(4);
+}
+
 inline void SetBit(uint8_t addr) __attribute__((always_inline));
 inline void SetBit(uint8_t bit)
 {
-	//6 clocks
-	PORTB = (PORTB & ~_BV(7)) | (bit & _BV(7));
-//	PORTB &= ~_BV(7); //2 clocks
-//	if (bit & 0x01)
-//		PORTB |= _BV(7); //2 clocks
+	PORTB = (PORTB & ~_BV(7)) | (bit & _BV(7)); //6 clocks
+}
+
+inline void SetBitDestructive(uint8_t addr) __attribute__((always_inline));
+inline void SetBitDestructive(uint8_t bit)
+{
+//	PORTB = bit; //destructive to address and LED, 1 clock
+	PORTB = bit | _BV(4); //destructive to address, 2 clocks
+//	PORTB = (PORTB & ~_BV(7)) | (bit & _BV(7)); //6 clocks
 }
 
 void WriteBit(uint8_t ra, uint8_t ca, uint8_t bit)
 {
 	//set data bit
-	SetBit(bit);
+	SetBitDestructive(bit);
 //	printf("D:%02X\n", PORTC);
 
 	SetAddress(ra); //set row address
@@ -82,14 +98,14 @@ char ReadBit(uint8_t ra, uint8_t ca)
 	//WE high
 	PORTC |= WE;
 
-	SetAddress(ra); //set row address
+	SetAddressDestructive(ra); //set row address
 
 	//ras low
 	PORTC &= ~RAS;
 	//sleep 15ns for tRAH
 	asm("nop"); //62ns
 
-	SetAddress(ca); //set column address
+	SetAddressDestructive(ca); //set column address
 
 	//cas low
 	PORTC &= ~CAS;
@@ -115,7 +131,7 @@ void WriteByte(uint8_t ra, uint8_t ca, uint8_t byte)
 {
 	uint8_t i;
 
-	SetAddress(ra); //set row address
+	SetAddressDestructive(ra); //set row address
 
 	//ras low
 	PORTC &= ~RAS; //2 clocks
@@ -126,7 +142,7 @@ void WriteByte(uint8_t ra, uint8_t ca, uint8_t byte)
 	for (i=0;i<8;++i)
 	{
 		//set data bit
-		SetBit(byte);
+		SetBitDestructive(byte);
 //		PORTC = (PORTC & ~_BV(4)) | ((byte & 0x01)<<4);
 
 		//WE low
@@ -165,7 +181,7 @@ char ReadByte(uint8_t ra, uint8_t ca)
 	uint8_t i, byte;
 	byte = 0;
 
-	SetAddress(ra); //set row address
+	SetAddressDestructive(ra); //set row address
 
 	//ras low
 	PORTC &= ~RAS;
@@ -179,7 +195,7 @@ char ReadByte(uint8_t ra, uint8_t ca)
 		PORTC |= WE;
 		//down for at least 55ns
 
-		SetAddress(ca); //set column address
+		SetAddressDestructive(ca); //set column address
 
 		//cas low
 		PORTC &= ~CAS;
