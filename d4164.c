@@ -199,21 +199,19 @@ char ReadByte(uint8_t ra, uint8_t ca)
 
 		//cas low
 		PORTC &= ~CAS;
-
 		//wait 100ns before reading data, tCAC  (2 instructions)
-		asm("nop");
-		asm("nop");
 
-		byte <<= 1; //move last data read over 1 bit
+		++ca;
+	        __asm__ __volatile__ ("lsl %0\n\t" : "=r"(byte) : "0"(byte) ); // byte<<1
 
-		byte |= (PINC & _BV(2)) >> 2;
+		byte |= (PINC>>2) & 0x01;
 
 		//cas high
 		//we high
 		PORTC |= CAS | WE;
 		//wait tCP, 80ns (2 instructions) (loop overhead)
 
-		++ca;
+//		++ca;
 //		asm("nop");		
 	}
 
