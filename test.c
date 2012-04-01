@@ -28,7 +28,7 @@ int main()
 	//ras high
 	//cas high
 	//we high
-	PORTC |= CAS | WE | 0xE0;
+	PORTC |= CAS | WE | RAS;
 
 	PORTB |= _BV(4); //LEDON
 	_delay_ms(50);
@@ -39,37 +39,39 @@ int main()
 	
 	sei();	//Safe to leave lockdown...
 	uint8_t b,r;
-	b=0;
+	b=0x55;
+
+	uint8_t ri,ci;
+	ri=ci=0;
 
 	for(;;)
 	{
-//		WriteBit(0,0,b);
-		WriteByte(0,0,b);
 
-		//a few instructions are needed before the next read or write fot tRC 330ns
-		asm("nop");
-		asm("nop");
-		asm("nop");
-		asm("nop");
-		asm("nop");
-
-		r = ReadBit(0,0);
-//		printf("w %02X r %02X\n", b, r);
-/*
-		if (r == b) 
-			PORTB |= _BV(4);
-		else
-			PORTB &= ~_BV(4); //LED off
-*/
-
-		if (r != b)
+		for (ri = 0; ; ++ri)
 		{
-//			printf("w %02X r %02X\n", b, r);
-			PORTB &= ~_BV(4); //LED off
-			return 0;			
+			for (ci=0; ; ci += 8)
+			{
+				r = 0;
+//				printf("write at %02X %02X\n", ri, ci);
+				WriteByte(ri,ci,b);
+				//the function overhead takes care of the tRC of at least 330ns
+				r = ReadByte(ri,ci);
+				if (r != b)
+				{
+//					printf("broken at %02X %02X\n", ri, ci);
+					PORTB &= ~_BV(4); //LED off
+					return 0;			
+				}
+				if (ci >= 0xF8) break;
+			}
+			if (ri >= 0xFF) break;
 		}
 
 		b = ~b;
+
+		PORTB &= ~_BV(4); //LEDON
+		_delay_ms(10);	
+		PORTB |= _BV(4); //LEDON
 	}
 
 	return 0;

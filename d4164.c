@@ -16,7 +16,6 @@ A5 PD5
 A6 PD6
 A7 PB6
 
-//DIN PC4 //output to ram
 DIN PB7 //output to ram
 WE PC5
 RAS PC6
@@ -25,18 +24,24 @@ CAS PC7
 DOUT PC2 //input from ram
 */
 
+inline void SetAddress(uint8_t addr) __attribute__((always_inline));
 inline void SetAddress(uint8_t addr)
 {
-	PORTD = (PORTD & _BV(7)) | (addr & ~_BV(7));
-//	PORTB = (PORTB & ~_BV(7)) | (addr & _BV(7));
+	//11 clocks instructions
+	PORTD = addr & ~_BV(7); //3 clocks
 	addr >>= 1;
-	PORTB = (PORTB & ~_BV(6)) | (addr & _BV(6));
+	PORTB = (PORTB & ~_BV(6)) | (addr & _BV(6)); //6 clocks
+//	PORTB = addr & _BV(6);
 }
 
+inline void SetBit(uint8_t addr) __attribute__((always_inline));
 inline void SetBit(uint8_t bit)
 {
-//	PORTC = (PORTC & ~_BV(4)) | (bit & _BV(4));
+	//6 clocks
 	PORTB = (PORTB & ~_BV(7)) | (bit & _BV(7));
+//	PORTB &= ~_BV(7); //2 clocks
+//	if (bit & 0x01)
+//		PORTB |= _BV(7); //2 clocks
 }
 
 void WriteBit(uint8_t ra, uint8_t ca, uint8_t bit)
@@ -48,7 +53,7 @@ void WriteBit(uint8_t ra, uint8_t ca, uint8_t bit)
 	SetAddress(ra); //set row address
 
 	//ras low
-	PORTC &= ~_BV(6);
+	PORTC &= ~RAS;
 	//sleep 15ns for tRAH
 	asm("nop"); //62ns
 
@@ -69,7 +74,7 @@ void WriteBit(uint8_t ra, uint8_t ca, uint8_t bit)
 	//ras high
 	//cas high
 	//we high
-	PORTC |= CAS | WE | 0xE0;
+	PORTC |= CAS | WE | RAS;
 }
 
 char ReadBit(uint8_t ra, uint8_t ca)
@@ -80,7 +85,7 @@ char ReadBit(uint8_t ra, uint8_t ca)
 	SetAddress(ra); //set row address
 
 	//ras low
-	PORTC &= ~_BV(6);
+	PORTC &= ~RAS;
 	//sleep 15ns for tRAH
 	asm("nop"); //62ns
 
@@ -100,7 +105,7 @@ char ReadBit(uint8_t ra, uint8_t ca)
 	//ras high
 	//cas high
 	//we high
-	PORTC |= CAS | WE | 0xE0;
+	PORTC |= CAS | WE | RAS;
 
 	if (bit>0) return 255;
 	return 0;
@@ -113,7 +118,7 @@ void WriteByte(uint8_t ra, uint8_t ca, uint8_t byte)
 	SetAddress(ra); //set row address
 
 	//ras low
-	PORTC &= ~_BV(6);
+	PORTC &= ~RAS; //2 clocks
 
 	//sleep 15ns for tRAH
 //	asm("nop");
@@ -146,17 +151,60 @@ void WriteByte(uint8_t ra, uint8_t ca, uint8_t byte)
 	
 		//cas high
 		//we high
-		PORTC |= CAS | WE | 0x80;
+		PORTC |= CAS | WE;
 		//for 80ns
 	}
 
 	//ras high
-	PORTC |= 0x60;
+	PORTC |= RAS;
 	//high for 120ns, tRP
 }
 
 char ReadByte(uint8_t ra, uint8_t ca)
 {
-	return 0;
+	uint8_t i, byte;
+	byte = 0;
+
+	SetAddress(ra); //set row address
+
+	//ras low
+	PORTC &= ~RAS;
+
+	//sleep 15ns for tRAH
+//	asm("nop");
+
+	for (i=0;i<8;++i)
+	{
+		//WE high
+		PORTC |= WE;
+		//down for at least 55ns
+
+		SetAddress(ca); //set column address
+
+		//cas low
+		PORTC &= ~CAS;
+
+		//wait 100ns before reading data, tCAC  (2 instructions)
+		asm("nop");
+		asm("nop");
+
+		byte <<= 1; //move last data read over 1 bit
+
+		byte |= (PINC & _BV(2)) >> 2;
+
+		//cas high
+		//we high
+		PORTC |= CAS | WE;
+		//wait tCP, 80ns (2 instructions) (loop overhead)
+
+		++ca;
+//		asm("nop");		
+	}
+
+	//ras high
+	PORTC |= RAS;
+	//high for 120ns, tRP
+
+	return byte;
 }
 
