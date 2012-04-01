@@ -9,6 +9,8 @@
 
 #include <d4164.h>
 
+//uint8_t dataString[257];
+
 int main()
 {
 	cli(); //disable interrupts
@@ -39,35 +41,43 @@ int main()
 	
 	sei();	//Safe to leave lockdown...
 	uint8_t b,r;
-	b=0x55;
 
 	uint8_t ri,ci;
 	ri=ci=0;
 
 	for(;;)
 	{
-
+		b=0x55;
 		for (ri = 0; ; ++ri)
 		{
 			for (ci=0; ; ci += 8)
 			{
-				r = 0;
-//				printf("write at %02X %02X\n", ri, ci);
-				WriteByte(ri,ci,b);
 				//the function overhead takes care of the tRC of at least 330ns
+				WriteByte(ri,ci,b);
+				b = ~b;
+				if (ci >= 0xF8) break;
+			}
+			if (ri >= 0xFF) break;
+		}
+
+		b=0x55;
+		for (ri = 0; ; ++ri)
+		{
+			for (ci=0; ; ci += 8)
+			{
 				r = ReadByte(ri,ci);
+//				printf("read %02X at %02X %02X\n", r, ri, ci);
 				if (r != b)
 				{
 //					printf("broken at %02X %02X\n", ri, ci);
 					PORTB &= ~_BV(4); //LED off
 					return 0;			
 				}
+				b = ~b;
 				if (ci >= 0xF8) break;
 			}
 			if (ri >= 0xFF) break;
 		}
-
-		b = ~b;
 
 		PORTB &= ~_BV(4); //LEDON
 		_delay_ms(10);	
