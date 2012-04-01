@@ -149,7 +149,7 @@ void WriteByte(uint8_t ra, uint8_t ca, uint8_t byte)
 		PORTC &= ~WE;
 		//down for at least 55ns
 
-		SetAddress(ca+i); //set column address
+		SetAddress(ca); //set column address
 
 		//cas low
 		PORTC &= ~CAS;
@@ -190,7 +190,7 @@ char ReadByte(uint8_t ra, uint8_t ca)
 		PORTC |= WE;
 		//down for at least 55ns
 
-		SetAddressDestructive(ca+i); //set column address
+		SetAddressDestructive(ca); //set column address
 
 		//cas low
 		PORTC &= ~CAS;
@@ -216,4 +216,3 @@ char ReadByte(uint8_t ra, uint8_t ca)
 
 	return byte;
 }
-
