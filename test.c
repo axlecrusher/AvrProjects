@@ -3,7 +3,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
-//#include "usb.h"
+#include "usb.h"
 #include "SPIPrinting.h"
 #include <stdio.h>
 
@@ -21,6 +21,10 @@ int main()
 
 //	USB_ZeroPrescaler();
 //	USB_Init();
+
+	//no clock divisor
+        CLKPR=0x80;
+        CLKPR=0x00;
 
 	//set output pins
 	DDRB |= _BV(7) | _BV(6) | _BV(4);
@@ -49,12 +53,13 @@ int main()
 
 	for(;;)
 	{
+		//walking 1 algorithim
 		b = (b >> 7) | (b << 1); // rotate left 
 
 		for (ri = 0; ; ++ri)
 		{
 			WriteRow(ri,b);
-			WriteRow(ri,~b);
+			WriteRow(ri,~b); //bit inversion
 			if (ri >= 0xFF) break;
 		}
 
@@ -65,7 +70,7 @@ int main()
 		}
 
 		PORTB &= ~_BV(4); //LEDON
-		_delay_ms(10);	
+		_delay_ms(80);	
 		PORTB |= _BV(4); //LEDON
 	}
 
