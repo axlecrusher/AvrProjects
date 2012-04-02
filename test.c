@@ -11,6 +11,37 @@
 
 //uint8_t dataString[257];
 
+void TestWires()
+{
+	// Test DRAM wiring first. Can identify faulty address wires.
+	uint8_t i;
+	uint8_t r = 0;
+	for (i = 0x01;;i<<=1)
+	{
+		WriteBit(0x00, 0x00, 0x00);
+		WriteBit(i, 0x00, 0xFF);
+		r = ReadBit(0x00, 0x00);
+
+		if (r != 0x00)
+		{
+			printf("\nread failed at 0x00 0x00, corrupted by writing to %02X %02X\n", i, 0);
+			PORTB &= ~_BV(4); //LED OFF
+			for (;;);
+		}
+		r = ReadBit(i, 0x00);
+
+		if (r != 0xFF)
+		{
+			printf("\nread failed at %02X %02X\n", i, 0);
+			PORTB &= ~_BV(4); //LED OFF
+			for (;;);
+		}
+	
+		if (i >= 0x80) break;
+	}
+}
+
+
 int main()
 {
 	cli(); //disable interrupts
@@ -48,7 +79,10 @@ int main()
 
 	uint8_t ri,ci;
 	ri=ci=0;
-	
+
+
+	TestWires();
+
 	b = 0x01;
 
 	for(;;)
