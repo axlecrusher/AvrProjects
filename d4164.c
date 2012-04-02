@@ -43,7 +43,7 @@ inline void SetAddressDestructive(uint8_t addr)
 
 	//4 clocks
 	addr >>= 1;
-	PORTB = (addr & _BV(6)) | _BV(4);
+	PORTB = (addr & _BV(6)) | _BV(4); //destroys data and all of PORTB
 }
 
 inline void SetBit(uint8_t addr) __attribute__((always_inline));
@@ -299,9 +299,8 @@ void ReadRow(uint8_t ra, uint8_t b)
 		PORTC &= ~CAS;
 		//wait 100ns before reading data, tCAC  (2 instructions)
 
-//		++ca;
+	        __asm__ __volatile__ ("nop");
 	        __asm__ __volatile__ ("lsl %0\n\t" : "=r"(byte) : "0"(byte) ); // byte<<1
-
 		byte |= (PINC>>2) & 0x01;
 		
 		if ((ca & 0x07) == 7)
@@ -312,7 +311,6 @@ void ReadRow(uint8_t ra, uint8_t b)
 //				PORTB &= ~_BV(4); //LED OFF
 //				for (;;);
 			}
-//			b = ~b;
 		}
 
 		//cas high
