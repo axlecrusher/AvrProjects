@@ -44,38 +44,23 @@ int main()
 
 	uint8_t ri,ci;
 	ri=ci=0;
+	
+	b = 0x01;
 
 	for(;;)
 	{
-		b=0x55;
+		b = (b >> 7) | (b << 1); // rotate left 
+
 		for (ri = 0; ; ++ri)
 		{
-			for (ci=0; ; ci += 8)
-			{
-				//the function overhead takes care of the tRC of at least 330ns
-				WriteByte(ri,ci,b);
-				b = ~b;
-				if (ci >= 0xF8) break;
-			}
+			WriteRow(ri,b);
+			WriteRow(ri,~b);
 			if (ri >= 0xFF) break;
 		}
 
-		b=0x55;
 		for (ri = 0; ; ++ri)
 		{
-			for (ci=0; ; ci += 8)
-			{
-				r = ReadByte(ri,ci);
-//				printf("read %02X at %02X %02X\n", r, ri, ci);
-				if (r != b)
-				{
-//					printf("broken at %02X %02X\n", ri, ci);
-					PORTB &= ~_BV(4); //LED off
-					return 0;			
-				}
-				b = ~b;
-				if (ci >= 0xF8) break;
-			}
+			ReadRow(ri,~b);
 			if (ri >= 0xFF) break;
 		}
 

@@ -216,3 +216,115 @@ char ReadByte(uint8_t ra, uint8_t ca)
 
 	return byte;
 }
+
+void WriteRow(uint8_t ra, uint8_t data)
+{
+	uint8_t ca = 0;
+	uint8_t byte = data;
+
+	SetAddressDestructive(ra); //set row address
+
+	//ras low
+	PORTC &= ~RAS; //2 clocks
+
+	//sleep 15ns for tRAH
+//	asm("nop");
+
+	for (ca=0;;++ca)
+	{
+		//set data bit
+		SetBitDestructive(byte);
+//		PORTC = (PORTC & ~_BV(4)) | ((byte & 0x01)<<4);
+
+		//WE low
+		PORTC &= ~WE;
+		//down for at least 55ns
+
+		SetAddress(ca); //set column address
+
+		//cas low
+		PORTC &= ~CAS;
+		//down for .1us - 10usec for tCAS
+		//so do extra stuff here
+		//.125usec total here
+		byte <<= 1;
+
+		if ((ca & 0x07) == 7)
+		{
+//			data = ~data;
+			byte = data;
+		}
+//		++ca;
+	
+		//cas high
+		//we high
+		PORTC |= CAS | WE;
+		//for 80ns
+
+		if (ca >= 0xFF) break;
+	}
+
+	//ras high
+	PORTC |= RAS;
+	//high for 120ns, tRP
+}
+
+void ReadRow(uint8_t ra, uint8_t b)
+{
+	uint8_t ca = 0;
+	uint8_t i, byte;
+	byte = 0;
+
+	SetAddressDestructive(ra); //set row address
+
+	//ras low
+	PORTC &= ~RAS;
+
+	//sleep 15ns for tRAH
+//	asm("nop");
+
+	//clear carry
+        __asm__ __volatile__ ("clc \n\t");
+
+
+	for (ca=0;;++ca)
+	{
+		//WE high
+		PORTC |= WE;
+		//down for at least 55ns
+
+		SetAddressDestructive(ca); //set column address
+
+		//cas low
+		PORTC &= ~CAS;
+		//wait 100ns before reading data, tCAC  (2 instructions)
+
+//		++ca;
+	        __asm__ __volatile__ ("lsl %0\n\t" : "=r"(byte) : "0"(byte) ); // byte<<1
+
+		byte |= (PINC>>2) & 0x01;
+		
+		if ((ca & 0x07) == 7)
+		{
+			if (byte != b)
+			{
+				printf("\nread %02X wanted %02X at %02X %02X\n", byte, b, ra, ca);
+//				PORTB &= ~_BV(4); //LED OFF
+//				for (;;);
+			}
+//			b = ~b;
+		}
+
+		//cas high
+		//we high
+		PORTC |= CAS | WE;
+		//wait tCP, 80ns (2 instructions) (loop overhead)
+		if (ca >= 0xFF) break;
+	}
+
+	//ras high
+	PORTC |= RAS;
+	//high for 120ns, tRP
+
+	return byte;
+}

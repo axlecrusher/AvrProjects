@@ -11,4 +11,7 @@ char ReadBit(uint8_t ra, uint8_t ca);
 void WriteByte(uint8_t ra, uint8_t ca, uint8_t byte);
 char ReadByte(uint8_t ra, uint8_t ca);
 
+void WriteRow(uint8_t ra, uint8_t byte);
+void ReadRow(uint8_t ra, uint8_t byte);
+
 #endif
