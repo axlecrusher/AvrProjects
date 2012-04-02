@@ -308,8 +308,8 @@ void ReadRow(uint8_t ra, uint8_t b)
 			if (byte != b)
 			{
 				printf("\nread %02X wanted %02X at %02X %02X\n", byte, b, ra, ca);
-//				PORTB &= ~_BV(4); //LED OFF
-//				for (;;);
+				PORTB &= ~_BV(4); //LED OFF
+				for (;;);
 			}
 		}
 
