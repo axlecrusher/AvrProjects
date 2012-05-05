@@ -1,3 +1,5 @@
+//Copyright 2011 Charles Lohr under the MIT/X11 License.
+
 #include "SPIPrinting.h"
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -46,3 +48,5 @@ ISR( SPI_STC_vect )
 	if( SPITail == PRINTF_BUFFER_SIZE )
 		SPITail = 0;
 }
+
+
