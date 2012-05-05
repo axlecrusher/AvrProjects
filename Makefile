@@ -1,8 +1,8 @@
 all : program.hex burn program.lst
 CC = avr-gcc
 
-OBJS = test.o SPIPrinting.o d4164.o #usb.o example.o usb_keyboard.o
-SRCS = test.c SPIPrinting.c d4164.c #usb.c example.c usb_keyboard.c
+OBJS = test.o SPIPrinting.o d4164.o usb.o #example.o usb_keyboard.o
+SRCS = test.c SPIPrinting.c d4164.c usb.c #example.c usb_keyboard.c
 
 PROCESSOR=atmega8u2
 PROGRAMCODE=m8u2
