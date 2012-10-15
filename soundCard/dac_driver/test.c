@@ -16,7 +16,7 @@ static uint16_t sineTable[] = {32768, 33625, 34482, 35338, 36193, 37045, 37893, 
 uint8_t offset = 0;
 volatile uint8_t WriteNewSample = 0x00;
 
-void WriteSample(int16_t* s);
+void WriteSample(int16_t* l, int16_t* r);
 
 void delay_ms(uint32_t time) {
   uint32_t i;
@@ -73,8 +73,8 @@ static void timer_init( void )
 	//it takes time to fire the interrupt so allow 20 clocks for that
 	//8bit timer
 	TCCR0A = 0x02; /* do not clear */
-	TCCR0B = 0x03; //every 1 tick
-	OCR0A = 3; //every 384 clock ticks
+	TCCR0B = 0x03; //every 64 tick
+	OCR0A = 7; //every 448 clock ticks
 	TIMSK0 = 2; //timer match A
 }
 
@@ -83,16 +83,44 @@ static void timer_init( void )
 		if ( ((DATA) & (BIT)) > 0) { PORTA |= _BV(SDATA); } /* 1 data */ \
 		PORTA |= _BV(SCLK); } /* sclk up */
 
-void WriteSample(int16_t* s)
+void WriteSample(int16_t* l, int16_t* r)
 {
 	uint8_t i;
-	uint8_t hbyte = *(s+1); //high byte
-	uint8_t lbyte = *(s); //low byte
+
+	//left channel first
+	uint8_t hbyte = *(l+1); //high byte
+	uint8_t lbyte = *(l); //low byte
 
 	PORTA |= 1<<SCLK; //sclk up
 	//sdata is read on the 2nd rising edge after LRCLK toggle 
 
 	//compiler made slow code so unroll with out own macro
+	WRITESAMPLEBIT(hbyte, 0x80);
+	WRITESAMPLEBIT(hbyte, 0x40);
+	WRITESAMPLEBIT(hbyte, 0x20);
+	WRITESAMPLEBIT(hbyte, 0x10);
+	WRITESAMPLEBIT(hbyte, 0x08);
+	WRITESAMPLEBIT(hbyte, 0x04);
+	WRITESAMPLEBIT(hbyte, 0x02);
+	WRITESAMPLEBIT(hbyte, 0x01);
+
+	WRITESAMPLEBIT(lbyte, 0x80);
+	WRITESAMPLEBIT(lbyte, 0x40);
+	WRITESAMPLEBIT(lbyte, 0x20);
+	WRITESAMPLEBIT(lbyte, 0x10);
+	WRITESAMPLEBIT(lbyte, 0x08);
+	WRITESAMPLEBIT(lbyte, 0x04);
+	WRITESAMPLEBIT(lbyte, 0x02);
+	WRITESAMPLEBIT(lbyte, 0x01);
+
+	//right channel
+	hbyte = *(r+1); //high byte
+	lbyte = *(r); //low byte
+
+	PORTA ^= _BV(LRCLK); //switch to right channel
+	PORTA &= ~(_BV(SCLK)); //bring sclock down
+	PORTA |= 1<<SCLK; //sclk up
+
 	WRITESAMPLEBIT(hbyte, 0x80);
 	WRITESAMPLEBIT(hbyte, 0x40);
 	WRITESAMPLEBIT(hbyte, 0x20);
@@ -179,20 +207,7 @@ int main( void )
 //		while (WriteNewSample == 0);
 //		WriteNewSample = 0;
 
-		if ( bit_is_set(PORTA,LRCLK) )
-		{
-			//Right channel
-			WriteSample(&s);
-//			WriteTest();
-			++offset;
-			if (offset>240) offset = 0;
-		}
-		else
-		{
-			//left channel
-			WriteSample(&s);
-//			WriteTest();
-		}
+		WriteSample(&s,&s);
 	}
 
 	PORTA = 0x0;
