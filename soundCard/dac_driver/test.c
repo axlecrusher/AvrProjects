@@ -11,6 +11,8 @@
 #define LRCLK PA3
 #define MCLK PB2 //Fuses burned to system clock output
 
+#define WATCHCLOCKS
+
 static uint16_t sineTable[] = {32768, 33625, 34482, 35338, 36193, 37045, 37893, 38739, 39580, 40417, 41248, 42074, 42893, 43706, 44510, 45307, 46095, 46874, 47644, 48403, 49151, 49888, 50614, 51327, 52028, 52715, 53389, 54048, 54693, 55323, 55938, 56536, 57118, 57684, 58233, 58764, 59277, 59772, 60249, 60706, 61145, 61564, 61964, 62343, 62702, 63041, 63359, 63656, 63931, 64186, 64418, 64630, 64819, 64986, 65132, 65255, 65355, 65434, 65490, 65524, 65535, 65524, 65490, 65434, 65355, 65255, 65132, 64986, 64819, 64630, 64418, 64186, 63931, 63656, 63359, 63041, 62702, 62343, 61964, 61564, 61145, 60706, 60249, 59772, 59277, 58764, 58233, 57684, 57118, 56536, 55938, 55323, 54693, 54048, 53389, 52715, 52028, 51327, 50614, 49888, 49151, 48403, 47644, 46874, 46095, 45307, 44510, 43706, 42893, 42074, 41248, 40417, 39580, 38739, 37893, 37045, 36193, 35338, 34482, 33625, 32768, 31910, 31053, 30197, 29342, 28490, 27642, 26796, 25955, 25118, 24287, 23461, 22642, 21829, 21025, 20228, 19440, 18661, 17891, 17132, 16384, 15647, 14921, 14208, 13507, 12820, 12146, 11487, 10842, 10212, 9597, 8999, 8417, 7851, 7302, 6771, 6258, 5763, 5286, 4829, 4390, 3971, 3571, 3192, 2833, 2494, 2176, 1879, 1604, 1349, 1117, 905, 716, 549, 403, 280, 180, 101, 45, 11, 0, 11, 45, 101, 180, 280, 403, 549, 716, 905, 1117, 1349, 1604, 1879, 2176, 2494, 2833, 3192, 3571, 3971, 4390, 4829, 5286, 5763, 6258, 6771, 7302, 7851, 8417, 8999, 9597, 10212, 10842, 11487, 12146, 12820, 13507, 14208, 14921, 15647, 16384, 17132, 17891, 18661, 19440, 20228, 21025, 21829, 22642, 23461, 24287, 25118, 25955, 26796, 27642, 28490, 29342, 30197, 31053, 31910};
 
 uint8_t offset = 0;
@@ -56,11 +58,26 @@ void PowerUpDac()
 	PORTA &= ~(1<<LRCLK); //down
 }
 
+void TooSlow()
+{
+	while(1)
+	{
+		PORTA ^= _BV(LRCLK); //switch channel
+		delay_ms(500);
+	}
+}
+
 uint8_t ticksSinceInterrupt;
+volatile uint8_t stillWritingBits = 0;
 
 ISR( TIM0_COMPA_vect )
 {
 	//sclock need to be left in the up state before the callback
+
+#ifdef WATCHCLOCKS
+	if (stillWritingBits>0) TooSlow();
+#endif
+
 	PORTA ^= _BV(LRCLK); //switch channel
 	PORTA &= ~(_BV(SCLK)); //bring sclock down
 	WriteNewSample = 0x01;
@@ -86,11 +103,15 @@ void WriteSample(int16_t* l, int16_t* r)
 {
 	uint8_t i;
 
+#ifdef WATCHCLOCKS
+	stillWritingBits = 1;
+#endif
+
 	//left channel first
 	uint8_t hbyte = *(l+1); //high byte
 	uint8_t lbyte = *(l); //low byte
 
-	PORTA |= 1<<SCLK; //sclk up
+	PORTA |= _BV(SCLK); //sclk up
 	//sdata is read on the 2nd rising edge after LRCLK toggle 
 
 	//compiler made slow code so unroll with out own macro
@@ -118,7 +139,7 @@ void WriteSample(int16_t* l, int16_t* r)
 
 	PORTA ^= _BV(LRCLK); //switch to right channel
 	PORTA &= ~(_BV(SCLK)); //bring sclock down
-	PORTA |= 1<<SCLK; //sclk up
+	PORTA |= _BV(SCLK); //sclk up
 
 	WRITESAMPLEBIT(hbyte, 0x80);
 	WRITESAMPLEBIT(hbyte, 0x40);
@@ -137,6 +158,12 @@ void WriteSample(int16_t* l, int16_t* r)
 	WRITESAMPLEBIT(lbyte, 0x04);
 	WRITESAMPLEBIT(lbyte, 0x02);
 	WRITESAMPLEBIT(lbyte, 0x01);
+
+	//for testing ttoo highclock ticks
+//	for (i=0;i<255;++i) NOOP;
+#ifdef WATCHCLOCKS
+	stillWritingBits = 0;
+#endif
 
 /*
 	for (i=0x80;i>0;i>>=1) //funroll
@@ -195,17 +222,13 @@ int main( void )
 
 	int16_t s = 0x7fff;
 
+//	PORTA ^= _BV(LRCLK); //switch channel
+//	PORTA ^= _BV(LRCLK); //switch channel
+
 	while(1)
 	{
 		while (WriteNewSample==0);
 		WriteNewSample = 0;
-//		WriteTest();
-
-//		printf("clock tick %d\n", ticksSinceInterrupt);
-		
-//		while (WriteNewSample == 0);
-//		WriteNewSample = 0;
-
 		WriteSample(&s,&s);
 	}
 
