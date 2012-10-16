@@ -78,8 +78,7 @@ static void timer_init( void )
 	TIMSK0 = 2; //timer match A
 }
 
-#define WRITESAMPLEBIT(DATA, BIT) { PORTA &= ~(_BV(SCLK)); /*lower sclk*/ \
-		PORTA &= ~(_BV(SDATA)); /* 0 data, do not put in else or compiler makes lots of jumps */ \
+#define WRITESAMPLEBIT(DATA, BIT) { PORTA &= ~(_BV(SCLK) | _BV(SDATA)); /*lower sclk and clear data bit*/ \
 		if ( ((DATA) & (BIT)) > 0) { PORTA |= _BV(SDATA); } /* 1 data */ \
 		PORTA |= _BV(SCLK); } /* sclk up */
 
