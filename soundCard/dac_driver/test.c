@@ -18,7 +18,7 @@ static uint16_t sineTable[] = {32768, 33625, 34482, 35338, 36193, 37045, 37893, 
 uint8_t offset = 0;
 volatile uint8_t WriteNewSample = 0x00;
 
-void WriteSample(int16_t* l, int16_t* r);
+void WriteSample(int8_t* l, int8_t* r);
 
 void delay_ms(uint32_t time) {
   uint32_t i;
@@ -41,7 +41,7 @@ static void setup_clock( void )
 void setup_pins()
 {
 	DDRA = (1<<SDATA) | (1<<SCLK) | (1<<LRCLK);
-	PORTA = (1<<SCLK); //up
+//	PORTA = (1<<SCLK); //up
 
 //	DDRB =  (1<<MCLK);
 //	PORTB = 0x0;
@@ -60,10 +60,21 @@ void PowerUpDac()
 
 void TooSlow()
 {
+	TIMSK0 = 0;
 	while(1)
 	{
 		PORTA ^= _BV(LRCLK); //switch channel
 		delay_ms(500);
+	}
+}
+
+void FastBlink()
+{
+	TIMSK0 = 0;
+	while(1)
+	{
+		PORTA ^= _BV(LRCLK); //switch channel
+		delay_ms(100);
 	}
 }
 
@@ -78,8 +89,8 @@ ISR( TIM0_COMPA_vect )
 	if (stillWritingBits>0) TooSlow();
 #endif
 
-	PORTA ^= _BV(LRCLK); //switch channel
-	PORTA &= ~(_BV(SCLK)); //bring sclock down
+//	PORTA ^= _BV(LRCLK); //switch channel
+//	PORTA &= ~(_BV(SCLK)); //bring sclock down
 	WriteNewSample = 0x01;
 }
 
@@ -99,7 +110,7 @@ static void timer_init( void )
 		if ( ((DATA) & (BIT)) > 0) { PORTA |= _BV(SDATA); } /* 1 data */ \
 		PORTA |= _BV(SCLK); } /* sclk up */
 
-void WriteSample(int16_t* l, int16_t* r)
+void WriteSample(int8_t* l, int8_t* r)
 {
 	uint8_t i;
 
@@ -108,11 +119,13 @@ void WriteSample(int16_t* l, int16_t* r)
 #endif
 
 	//left channel first
-	uint8_t hbyte = *(l+1); //high byte
-	uint8_t lbyte = *(l); //low byte
+	uint8_t hbyte = l[1]; //high byte
+	uint8_t lbyte = l[0]; //low byte
 
-	PORTA |= _BV(SCLK); //sclk up
-	//sdata is read on the 2nd rising edge after LRCLK toggle 
+	PORTA ^= _BV(SCLK); //sclk up
+	//sdata is read on the 2nd rising edge after LRCLK toggle
+
+	//LRCLK is in left channel state	
 
 	//compiler made slow code so unroll with out own macro
 	WRITESAMPLEBIT(hbyte, 0x80);
@@ -134,8 +147,8 @@ void WriteSample(int16_t* l, int16_t* r)
 	WRITESAMPLEBIT(lbyte, 0x01);
 
 	//right channel
-	hbyte = *(r+1); //high byte
-	lbyte = *(r); //low byte
+	hbyte = r[1]; //high byte
+	lbyte = r[0]; //low byte
 
 	PORTA ^= _BV(LRCLK); //switch to right channel
 	PORTA &= ~(_BV(SCLK)); //bring sclock down
@@ -161,6 +174,10 @@ void WriteSample(int16_t* l, int16_t* r)
 
 	//for testing ttoo highclock ticks
 //	for (i=0;i<255;++i) NOOP;
+
+	PORTA ^= _BV(LRCLK); //switch to left channel
+	PORTA &= ~(_BV(SCLK)); //bring sclock down
+
 #ifdef WATCHCLOCKS
 	stillWritingBits = 0;
 #endif
@@ -220,16 +237,17 @@ int main( void )
 //	PowerUpDac();
 //		PORTA |= 1<<SDATA;
 
-	int16_t s = 0x7fff;
+	int16_t l = 0x7fff;
+	int16_t r = 0x7fff;
 
 //	PORTA ^= _BV(LRCLK); //switch channel
 //	PORTA ^= _BV(LRCLK); //switch channel
 
 	while(1)
 	{
+		WriteSample((uint8_t*)&l,(uint8_t*)&r);
 		while (WriteNewSample==0);
 		WriteNewSample = 0;
-		WriteSample(&s,&s);
 	}
 
 	PORTA = 0x0;
