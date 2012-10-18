@@ -91,9 +91,10 @@ static void timer_init( void )
 	//it takes time to fire the interrupt so allow 20 clocks for that
 	//8bit timer
 	TCCR0A = 0x02; /* do not clear */
-	TCCR0B = 0x03; //every 64 tick
-	OCR0A = 7; //every 448 clock ticks
-	TIMSK0 = 2; //timer match A
+	TCCR0B = 0x02; //every 8 ticks
+	OCR0A = 64; //every 512 clock ticks
+//	TIMSK0 = 0x02; //timer match A
+	TIMSK0 = 0x00; //don't fire interrupt just let the counter clear
 }
 
 #define WRITESAMPLEBIT(DATA, BIT) { PORTA &= ~(_BV(SCLK) | _BV(SDATA)); /*lower sclk and clear data bit*/ \
@@ -109,9 +110,6 @@ void WriteSample(int8_t* l, int8_t* r)
 	//left channel first
 	uint8_t hbyte = l[1]; //high byte
 	uint8_t lbyte = l[0]; //low byte
-
-	PORTA ^= _BV(SCLK); //sclk up
-	//sdata is read on the 2nd rising edge after LRCLK toggle
 
 	//LRCLK is in left channel state	
 
@@ -138,6 +136,8 @@ void WriteSample(int8_t* l, int8_t* r)
 	hbyte = r[1]; //high byte
 	lbyte = r[0]; //low byte
 
+	while (TCNT0<32);
+
 	PORTA ^= _BV(LRCLK); //switch to right channel
 	PORTA &= ~(_BV(SCLK)); //bring sclock down
 	PORTA |= _BV(SCLK); //sclk up
@@ -160,15 +160,22 @@ void WriteSample(int8_t* l, int8_t* r)
 	WRITESAMPLEBIT(lbyte, 0x02);
 	WRITESAMPLEBIT(lbyte, 0x01);
 
-	//for testing ttoo highclock ticks
+	//for testing too highclock ticks
 //	for (i=0;i<255;++i) NOOP;
-
-	PORTA ^= _BV(LRCLK); //switch to left channel
-	PORTA &= ~(_BV(SCLK)); //bring sclock down
-
 #ifdef WATCHCLOCKS
 	stillWritingBits = 0;
 #endif
+
+	while (TCNT0<62); //get as close to 512 clock ticks as possible
+
+	PORTA ^= _BV(LRCLK); //switch to left channel
+	PORTA &= ~(_BV(SCLK)); //bring sclock down
+	PORTA ^= _BV(SCLK); //sclk up
+	//sdata is read on the 2nd rising edge after LRCLK toggle
+
+	//wait for and clear CTC flag
+//	while( (TIFR0 & (1 << OCF0A)) == 0);
+//	TIFR0 = (1 << OCF0A);
 
 /*
 	for (i=0x80;i>0;i>>=1) //funroll
