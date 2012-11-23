@@ -97,22 +97,26 @@ static void timer_init( void )
 	//we have just 256 clock ticks to work with.
 
 	TCCR0A = 0x12; /* CTC, PA7 toggle */
-//	TCCR0A = 0x22; /* CTC, PA7 clear */
-	TCCR0B = 0x04; /* 256 ticks */
-	OCR0A = 1; // timer at 512 ticks
+	TCCR0B = 0x03; /* 64 ticks */
+	OCR0A = 3; // timer at 256 ticks (counts from 0)
 	TIMSK0 = 0x00; //no timer interrupts
 }
 
+//8 tick worst case, 7 best case
+#define WRITESAMPLEBIT(DATA, BIT) { PORTA &= ~(_BV(SCLK) | _BV(SDATA)); /*lower sclk*/ \
+		if ( ((DATA) & (BIT)) > 0) { PORTA |= _BV(SDATA); } /* 1 data, 2 or 3 clock ticks */ \
+		PORTA |= _BV(SCLK); } /* sclk up */
+
 //9 clock ticks, CAREFUL!!! CONSTANT TIMING REGARDLESS OF DATA
 //compiler makes this into bullcrap asm with lots of relative jumps
-#define WRITESAMPLEBIT(DATA, BIT) { PORTA &= ~(_BV(SCLK)); /*lower sclk*/ \
+#define WRITESAMPLEBIT9(DATA, BIT) { PORTA &= ~(_BV(SCLK)); /*lower sclk*/ \
 		if ( ((DATA) & (BIT)) == 0) { PORTA &= ~_BV(SDATA); } /* 1 data, 3 or 2 clock ticks */ \
 		if ( ((DATA) & (BIT)) > 0) { PORTA |= _BV(SDATA); } /* 1 data, 2 or 3 clock ticks (inverse of above) */ \
 		PORTA |= _BV(SCLK); } /* sclk up */
 
 //9 clock ticks, CAREFUL!!! CONSTANT TIMING REGARDLESS OF DATA
 //assembly implementation of above because gcc botches it up
-#define WRITESAMPLEBIT2(DATA, BIT) { PORTA &= ~(_BV(SCLK)); /*lower sclk*/ \
+#define WRITESAMPLEBIT9ASM(DATA, BIT) { PORTA &= ~(_BV(SCLK)); /*lower sclk*/ \
 		/* if ( ((DATA) & (BIT)) == 0) { PORTA &= ~_BV(SDATA); } 1 data, 3 or 2 clock ticks */ \
 		__asm__ __volatile__ ("sbrs %0,%1\n\t" : "+r"(DATA) : "i"(BIT) ); \
 		__asm__ __volatile__ ("cbi 59-32,1\n\t" ); \
@@ -136,23 +140,23 @@ void WriteSample(int8_t* l, int8_t* r)
 	PORTA |= _BV(SCLK); //sclk up
 
 	//compiler made slow code so unroll with our own macro
-	WRITESAMPLEBIT2(hbyte, 7);
-	WRITESAMPLEBIT2(hbyte, 6);
-	WRITESAMPLEBIT2(hbyte, 5);
-	WRITESAMPLEBIT2(hbyte, 4);
-	WRITESAMPLEBIT2(hbyte, 3);
-	WRITESAMPLEBIT2(hbyte, 2);
-	WRITESAMPLEBIT2(hbyte, 1);
-	WRITESAMPLEBIT2(hbyte, 0);
+	WRITESAMPLEBIT(hbyte, 0x80);
+	WRITESAMPLEBIT(hbyte, 0x40);
+	WRITESAMPLEBIT(hbyte, 0x20);
+	WRITESAMPLEBIT(hbyte, 0x10);
+	WRITESAMPLEBIT(hbyte, 0x08);
+	WRITESAMPLEBIT(hbyte, 0x04);
+	WRITESAMPLEBIT(hbyte, 0x02);
+	WRITESAMPLEBIT(hbyte, 0x01);
 
-	WRITESAMPLEBIT2(lbyte, 7);
-	WRITESAMPLEBIT2(lbyte, 6);
-	WRITESAMPLEBIT2(lbyte, 5);
-	WRITESAMPLEBIT2(lbyte, 4);
-	WRITESAMPLEBIT2(lbyte, 3);
-	WRITESAMPLEBIT2(lbyte, 2);
-	WRITESAMPLEBIT2(lbyte, 1);
-	WRITESAMPLEBIT2(lbyte, 0);
+	WRITESAMPLEBIT(lbyte, 0x80);
+	WRITESAMPLEBIT(lbyte, 0x40);
+	WRITESAMPLEBIT(lbyte, 0x20);
+	WRITESAMPLEBIT(lbyte, 0x10);
+	WRITESAMPLEBIT(lbyte, 0x08);
+	WRITESAMPLEBIT(lbyte, 0x04);
+	WRITESAMPLEBIT(lbyte, 0x02);
+	WRITESAMPLEBIT(lbyte, 0x01);
 
 	//right channel
 	hbyte = r[1]; //high byte
@@ -163,23 +167,23 @@ void WriteSample(int8_t* l, int8_t* r)
 	PORTA &= ~(_BV(SCLK)); //bring sclock down
 	PORTA |= _BV(SCLK); //sclk up
 
-	WRITESAMPLEBIT2(hbyte, 7);
-	WRITESAMPLEBIT2(hbyte, 6);
-	WRITESAMPLEBIT2(hbyte, 5);
-	WRITESAMPLEBIT2(hbyte, 4);
-	WRITESAMPLEBIT2(hbyte, 3);
-	WRITESAMPLEBIT2(hbyte, 2);
-	WRITESAMPLEBIT2(hbyte, 1);
-	WRITESAMPLEBIT2(hbyte, 0);
+	WRITESAMPLEBIT(hbyte, 0x80);
+	WRITESAMPLEBIT(hbyte, 0x40);
+	WRITESAMPLEBIT(hbyte, 0x20);
+	WRITESAMPLEBIT(hbyte, 0x10);
+	WRITESAMPLEBIT(hbyte, 0x08);
+	WRITESAMPLEBIT(hbyte, 0x04);
+	WRITESAMPLEBIT(hbyte, 0x02);
+	WRITESAMPLEBIT(hbyte, 0x01);
 
-	WRITESAMPLEBIT2(lbyte, 7);
-	WRITESAMPLEBIT2(lbyte, 6);
-	WRITESAMPLEBIT2(lbyte, 5);
-	WRITESAMPLEBIT2(lbyte, 4);
-	WRITESAMPLEBIT2(lbyte, 3);
-	WRITESAMPLEBIT2(lbyte, 2);
-	WRITESAMPLEBIT2(lbyte, 1);
-	WRITESAMPLEBIT2(lbyte, 0);
+	WRITESAMPLEBIT(lbyte, 0x80);
+	WRITESAMPLEBIT(lbyte, 0x40);
+	WRITESAMPLEBIT(lbyte, 0x20);
+	WRITESAMPLEBIT(lbyte, 0x10);
+	WRITESAMPLEBIT(lbyte, 0x08);
+	WRITESAMPLEBIT(lbyte, 0x04);
+	WRITESAMPLEBIT(lbyte, 0x02);
+	WRITESAMPLEBIT(lbyte, 0x01);
 }
 
 void WriteTest()
@@ -210,15 +214,13 @@ int main( void )
 //	PowerUpDac();
 //		PORTA |= 1<<SDATA;
 
-//	int16_t l = 0x7fff;
-	int16_t l = 0xffff;
+	int16_t l = 0x7fff;
+//	int16_t l = 0xffff;
 	int16_t r = 0xffff;
 
 	while(1)
 	{
 		WriteSample((int8_t*)&l,(int8_t*)&r);
-//		while (WriteNewSample==0);
-//		WriteNewSample = 0;
 	}
 
 	PORTA = 0x0;
