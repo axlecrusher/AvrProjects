@@ -103,120 +103,80 @@ static void timer_init( void )
 //	TIMSK0 = 0x00; //don't fire interrupt just let the counter clear
 }
 
-#define WRITESAMPLEBIT(DATA, BIT) { PORTA &= ~(_BV(SCLK) | _BV(SDATA)); /*lower sclk and clear data bit*/ \
-		if ( ((DATA) & (BIT)) > 0) { PORTA |= _BV(SDATA); } /* 1 data */ \
+//9 clock ticks, CAREFUL!!! CONSTANT TIMING REGARDLESS OF DATA
+//compiler fills makes this into bullcrap asm with lots of relative jumps
+#define WRITESAMPLEBIT(DATA, BIT) { PORTA &= ~(_BV(SCLK)); /*lower sclk*/ \
+		if ( ((DATA) & (BIT)) == 0) { PORTA &= ~_BV(SDATA); } /* 1 data, 3 or 2 clock ticks */ \
+		if ( ((DATA) & (BIT)) > 0) { PORTA |= _BV(SDATA); } /* 1 data, 2 or 3 clock ticks (inverse of above) */ \
+		PORTA |= _BV(SCLK); } /* sclk up */
+
+//9 clock ticks, CAREFUL!!! CONSTANT TIMING REGARDLESS OF DATA
+//assembly implementation of above because gcc botches it up
+#define WRITESAMPLEBIT2(DATA, BIT) { PORTA &= ~(_BV(SCLK)); /*lower sclk*/ \
+		/* if ( ((DATA) & (BIT)) == 0) { PORTA &= ~_BV(SDATA); } 1 data, 3 or 2 clock ticks */ \
+		__asm__ __volatile__ ("sbrs %0,%1\n\t" : "+r"(DATA) : "i"(BIT) ); \
+		__asm__ __volatile__ ("cbi 59-32,1\n\t" ); \
+		/* if ( ((DATA) & (BIT)) > 0) { PORTA |= _BV(SDATA); } 1 data, 2 or 3 clock ticks (inverse of above) */ \
+		__asm__ __volatile__ ("sbrc %0,%1\n\t" : "+r"(DATA) : "i"(BIT) ); \
+		__asm__ __volatile__ ("sbi 59-32,1\n\t" ); \
 		PORTA |= _BV(SCLK); } /* sclk up */
 
 void WriteSample(int8_t* l, int8_t* r)
 {
-#ifdef WATCHCLOCKS
-	stillWritingBits = 1;
-#endif
-
 	//left channel first
 	uint8_t hbyte = l[1]; //high byte
 	uint8_t lbyte = l[0]; //low byte
 
 	//LRCLK is in left channel state	
+	PORTA &= ~_BV(LRCLK); //switch to left channel
+
+	PORTA &= ~(_BV(SCLK)); //bring sclock down
+	PORTA |= _BV(SCLK); //sclk up
 
 	//compiler made slow code so unroll with out own macro
-	WRITESAMPLEBIT(hbyte, 0x80);
-	WRITESAMPLEBIT(hbyte, 0x40);
-	WRITESAMPLEBIT(hbyte, 0x20);
-	WRITESAMPLEBIT(hbyte, 0x10);
-	WRITESAMPLEBIT(hbyte, 0x08);
-	WRITESAMPLEBIT(hbyte, 0x04);
-	WRITESAMPLEBIT(hbyte, 0x02);
-	WRITESAMPLEBIT(hbyte, 0x01);
+	WRITESAMPLEBIT2(hbyte, 7);
+	WRITESAMPLEBIT2(hbyte, 6);
+	WRITESAMPLEBIT2(hbyte, 5);
+	WRITESAMPLEBIT2(hbyte, 4);
+	WRITESAMPLEBIT2(hbyte, 3);
+	WRITESAMPLEBIT2(hbyte, 2);
+	WRITESAMPLEBIT2(hbyte, 1);
+	WRITESAMPLEBIT2(hbyte, 0);
 
-	WRITESAMPLEBIT(lbyte, 0x80);
-	WRITESAMPLEBIT(lbyte, 0x40);
-	WRITESAMPLEBIT(lbyte, 0x20);
-	WRITESAMPLEBIT(lbyte, 0x10);
-	WRITESAMPLEBIT(lbyte, 0x08);
-	WRITESAMPLEBIT(lbyte, 0x04);
-	WRITESAMPLEBIT(lbyte, 0x02);
-	WRITESAMPLEBIT(lbyte, 0x01);
+	WRITESAMPLEBIT2(lbyte, 7);
+	WRITESAMPLEBIT2(lbyte, 6);
+	WRITESAMPLEBIT2(lbyte, 5);
+	WRITESAMPLEBIT2(lbyte, 4);
+	WRITESAMPLEBIT2(lbyte, 3);
+	WRITESAMPLEBIT2(lbyte, 2);
+	WRITESAMPLEBIT2(lbyte, 1);
+	WRITESAMPLEBIT2(lbyte, 0);
 
 	//right channel
 	hbyte = r[1]; //high byte
 	lbyte = r[0]; //low byte
 
-	while (TCNT0<32);
-
-	PORTA ^= _BV(LRCLK); //switch to right channel
+	PORTA |= _BV(LRCLK); //switch to right channel
 	PORTA &= ~(_BV(SCLK)); //bring sclock down
 	PORTA |= _BV(SCLK); //sclk up
 
-	WRITESAMPLEBIT(hbyte, 0x80);
-	WRITESAMPLEBIT(hbyte, 0x40);
-	WRITESAMPLEBIT(hbyte, 0x20);
-	WRITESAMPLEBIT(hbyte, 0x10);
-	WRITESAMPLEBIT(hbyte, 0x08);
-	WRITESAMPLEBIT(hbyte, 0x04);
-	WRITESAMPLEBIT(hbyte, 0x02);
-	WRITESAMPLEBIT(hbyte, 0x01);
+	WRITESAMPLEBIT2(hbyte, 7);
+	WRITESAMPLEBIT2(hbyte, 6);
+	WRITESAMPLEBIT2(hbyte, 5);
+	WRITESAMPLEBIT2(hbyte, 4);
+	WRITESAMPLEBIT2(hbyte, 3);
+	WRITESAMPLEBIT2(hbyte, 2);
+	WRITESAMPLEBIT2(hbyte, 1);
+	WRITESAMPLEBIT2(hbyte, 0);
 
-	WRITESAMPLEBIT(lbyte, 0x80);
-	WRITESAMPLEBIT(lbyte, 0x40);
-	WRITESAMPLEBIT(lbyte, 0x20);
-	WRITESAMPLEBIT(lbyte, 0x10);
-	WRITESAMPLEBIT(lbyte, 0x08);
-	WRITESAMPLEBIT(lbyte, 0x04);
-	WRITESAMPLEBIT(lbyte, 0x02);
-	WRITESAMPLEBIT(lbyte, 0x01);
-
-	//for testing too highclock ticks
-//	for (i=0;i<255;++i) NOOP;
-#ifdef WATCHCLOCKS
-	stillWritingBits = 0;
-#endif
-
-
-	//wait for interrupt to lower LRCLK
-	while( (PORTA & _BV(LRCLK)) != 0);
-
-	//wait for and clear CTC flag
-//	while (TCNT0<63);
-	PORTA &= ~(_BV(SCLK)); //bring sclock down
-	PORTA ^= _BV(SCLK); //sclk up
-	//sdata is read on the 2nd rising edge after LRCLK toggle
-
-//	while( (TIFR0 & (1 << OCF0A)) == 0);
-//	TIFR0 = (1 << OCF0A);
-
-//	while( (TIFR1 & (1 << OCF1A)) == 0);
-//	TIFR1 = (1 << OCF1A);
-
-/*
-	ticksSinceInterrupt = TCNT0;
-TCCR0B = 0x00;
-printf("tick %d\n", ticksSinceInterrupt);
-TCCR0B = 0x02;
-*/
-/*
-	for (i=0x80;i>0;i>>=1) //funroll
-	{
-		PORTA &= ~(_BV(SCLK)); //lower sclk
-		if ( (hbyte & i) > 0)
-			PORTA |= _BV(SDATA); //set bit
-		else
-			PORTA &= ~(_BV(SDATA)); //clear
-		
-		PORTA |= _BV(SCLK); //sclk up
-	}
-
-	for (i=0x80;i>0;i>>=1) //funroll
-	{
-		PORTA &= ~(_BV(SCLK)); //lower sclk
-		if ( (lbyte & i) > 0)
-			PORTA |= _BV(SDATA); //set bit
-		else
-			PORTA &= ~(_BV(SDATA)); //clear
-		
-		PORTA |= _BV(SCLK); //sclk up
-	}
-*/
+	WRITESAMPLEBIT2(lbyte, 7);
+	WRITESAMPLEBIT2(lbyte, 6);
+	WRITESAMPLEBIT2(lbyte, 5);
+	WRITESAMPLEBIT2(lbyte, 4);
+	WRITESAMPLEBIT2(lbyte, 3);
+	WRITESAMPLEBIT2(lbyte, 2);
+	WRITESAMPLEBIT2(lbyte, 1);
+	WRITESAMPLEBIT2(lbyte, 0);
 }
 
 void WriteTest()
@@ -238,7 +198,7 @@ int main( void )
 	cli();
 	setup_clock();
 	setup_pins();
-	timer_init();
+//	timer_init();
 	sei();
 //	setup_spi();
 
