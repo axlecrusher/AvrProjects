@@ -2,7 +2,7 @@ all : program.hex burn program.lst
 PART=attiny44
 PROGPART=t44
 
-CFLAGS=-g -Os -mmcu=$(PART) -DF_CPU=24500000UL -Wall
+CFLAGS=-g -O2 -mmcu=$(PART) -DF_CPU=24500000UL -Wall
 CC=avr-gcc
 
 OBJS = test.o avr_print.o
@@ -29,4 +29,4 @@ readfuses :
 	avrdude -c usbtiny -p $(PROGPART) -U hfuse:r:high.txt:b -U lfuse:r:low.txt:b
 
 clean : 
-	rm -f *~ high.txt low.txt program.hex program.map program.elf *.o
+	rm -f *~ high.txt low.txt program.hex program.map program.elf *.o program.lst

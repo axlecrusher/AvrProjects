@@ -14,7 +14,7 @@
 #define WATCHCLOCKS
 
 uint8_t offset = 0;
-volatile uint8_t WriteNewSample = 0x00;
+//volatile uint8_t WriteNewSample = 0x00;
 
 void WriteSample(int8_t* l, int8_t* r);
 
@@ -71,17 +71,23 @@ void FastBlink()
 uint8_t ticksSinceInterrupt;
 volatile uint8_t stillWritingBits = 0;
 
-ISR( TIM0_COMPA_vect )
+ISR( TIM1_COMPA_vect )
 {
 	//sclock need to be left in the up state before the callback
+	PORTA ^= _BV(LRCLK); //switch to left channel
 
+/*
+TCCR1B ^= 0x01;
+printf("tick %d\n", ticksSinceInterrupt);
+TCCR1B ^= 0x01;
+*/
 #ifdef WATCHCLOCKS
 	if (stillWritingBits>0) TooSlow();
 #endif
 
 //	PORTA ^= _BV(LRCLK); //switch channel
 //	PORTA &= ~(_BV(SCLK)); //bring sclock down
-	WriteNewSample = 0x01;
+//	WriteNewSample = 0x01;
 }
 
 static void timer_init( void )
@@ -90,11 +96,11 @@ static void timer_init( void )
 	//we have just 256 clock ticks to work with.
 	//it takes time to fire the interrupt so allow 20 clocks for that
 	//8bit timer
-	TCCR0A = 0x02; /* do not clear */
-	TCCR0B = 0x02; //every 8 ticks
-	OCR0A = 64; //every 512 clock ticks
-//	TIMSK0 = 0x02; //timer match A
-	TIMSK0 = 0x00; //don't fire interrupt just let the counter clear
+	TCCR1A = 0x00; /* do not clear */
+	TCCR1B = (0x01 | 0x10); //every 8 ticks
+	OCR1A = 510; //every 512 clock ticks,
+	TIMSK1 = 0x02; //timer match A
+//	TIMSK0 = 0x00; //don't fire interrupt just let the counter clear
 }
 
 #define WRITESAMPLEBIT(DATA, BIT) { PORTA &= ~(_BV(SCLK) | _BV(SDATA)); /*lower sclk and clear data bit*/ \
@@ -166,17 +172,28 @@ void WriteSample(int8_t* l, int8_t* r)
 	stillWritingBits = 0;
 #endif
 
-	while (TCNT0<62); //get as close to 512 clock ticks as possible
 
-	PORTA ^= _BV(LRCLK); //switch to left channel
+	//wait for interrupt to lower LRCLK
+	while( (PORTA & _BV(LRCLK)) != 0);
+
+	//wait for and clear CTC flag
+//	while (TCNT0<63);
 	PORTA &= ~(_BV(SCLK)); //bring sclock down
 	PORTA ^= _BV(SCLK); //sclk up
 	//sdata is read on the 2nd rising edge after LRCLK toggle
 
-	//wait for and clear CTC flag
 //	while( (TIFR0 & (1 << OCF0A)) == 0);
 //	TIFR0 = (1 << OCF0A);
 
+//	while( (TIFR1 & (1 << OCF1A)) == 0);
+//	TIFR1 = (1 << OCF1A);
+
+/*
+	ticksSinceInterrupt = TCNT0;
+TCCR0B = 0x00;
+printf("tick %d\n", ticksSinceInterrupt);
+TCCR0B = 0x02;
+*/
 /*
 	for (i=0x80;i>0;i>>=1) //funroll
 	{
@@ -231,7 +248,7 @@ int main( void )
 //		PORTA |= 1<<SDATA;
 
 	int16_t l = 0x7fff;
-	int16_t r = 0x7fff;
+	int16_t r = 0xffff;
 
 //	PORTA ^= _BV(LRCLK); //switch channel
 //	PORTA ^= _BV(LRCLK); //switch channel
@@ -239,8 +256,8 @@ int main( void )
 	while(1)
 	{
 		WriteSample((int8_t*)&l,(int8_t*)&r);
-		while (WriteNewSample==0);
-		WriteNewSample = 0;
+//		while (WriteNewSample==0);
+//		WriteNewSample = 0;
 	}
 
 	PORTA = 0x0;
