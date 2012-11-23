@@ -39,6 +39,9 @@ static void setup_clock( void )
 
 void setup_pins()
 {
+	DDRA = 0;
+	DDRB = 0;
+
 	DDRA = (1<<SDATA) | (1<<SCLK) | (1<<LRCLK);
 //	PORTA = (1<<SCLK); //up
 
@@ -199,6 +202,79 @@ void WriteSample(int8_t* l, int8_t* r)
 	WRITESAMPLEBIT(lbyte, 0x01);
 }
 
+void WriteSampleFromSPI()
+{
+	//left channel first
+	uint8_t sbyte = 0x00;
+
+	while ((PINA & _BV(LRCLK)) > 0); //wait for left channel
+
+	PORTA &= ~(_BV(SCLK)); //bring sclock down
+	PORTA |= _BV(SCLK); //sclk up
+	
+	//read high byte
+	while ((USISR & (1<<USIOIF)) == 0);
+	USISR |= 1<<USIOIF; //clear interrupt
+	sbyte = USIBR; //read buffered data
+
+	//compiler made slow code so unroll with our own macro
+	WRITESAMPLEBIT(sbyte, 0x80);
+	WRITESAMPLEBIT(sbyte, 0x40);
+	WRITESAMPLEBIT(sbyte, 0x20);
+	WRITESAMPLEBIT(sbyte, 0x10);
+	WRITESAMPLEBIT(sbyte, 0x08);
+	WRITESAMPLEBIT(sbyte, 0x04);
+	WRITESAMPLEBIT(sbyte, 0x02);
+	WRITESAMPLEBIT(sbyte, 0x01);
+
+	//read low byte
+	while ((USISR & (1<<USIOIF)) == 0);
+	USISR |= 1<<USIOIF; //clear interrupt
+	sbyte = USIBR; //read buffered data
+
+	WRITESAMPLEBIT(sbyte, 0x80);
+	WRITESAMPLEBIT(sbyte, 0x40);
+	WRITESAMPLEBIT(sbyte, 0x20);
+	WRITESAMPLEBIT(sbyte, 0x10);
+	WRITESAMPLEBIT(sbyte, 0x08);
+	WRITESAMPLEBIT(sbyte, 0x04);
+	WRITESAMPLEBIT(sbyte, 0x02);
+	WRITESAMPLEBIT(sbyte, 0x01);
+
+	while ((PINA & _BV(LRCLK)) == 0); //wait for right channel
+
+	PORTA &= ~(_BV(SCLK)); //bring sclock down
+	PORTA |= _BV(SCLK); //sclk up
+
+	//read high byte
+	while ((USISR & (1<<USIOIF)) == 0);
+	USISR |= 1<<USIOIF; //clear interrupt
+	sbyte = USIBR; //read buffered data
+
+	WRITESAMPLEBIT(sbyte, 0x80);
+	WRITESAMPLEBIT(sbyte, 0x40);
+	WRITESAMPLEBIT(sbyte, 0x20);
+	WRITESAMPLEBIT(sbyte, 0x10);
+	WRITESAMPLEBIT(sbyte, 0x08);
+	WRITESAMPLEBIT(sbyte, 0x04);
+	WRITESAMPLEBIT(sbyte, 0x02);
+	WRITESAMPLEBIT(sbyte, 0x01);
+
+	//read low byte
+	while ((USISR & (1<<USIOIF)) == 0);
+	USISR |= 1<<USIOIF; //clear interrupt
+	sbyte = USIBR; //read buffered data
+
+	WRITESAMPLEBIT(sbyte, 0x80);
+	WRITESAMPLEBIT(sbyte, 0x40);
+	WRITESAMPLEBIT(sbyte, 0x20);
+	WRITESAMPLEBIT(sbyte, 0x10);
+	WRITESAMPLEBIT(sbyte, 0x08);
+	WRITESAMPLEBIT(sbyte, 0x04);
+	WRITESAMPLEBIT(sbyte, 0x02);
+	WRITESAMPLEBIT(sbyte, 0x01);
+}
+
 void WriteTest()
 {
 	uint8_t i = 0;
@@ -213,6 +289,14 @@ void WriteTest()
 	}
 }
 
+void setup_data_spi()
+{
+	DDRA &= 0xAF; //clear PA6, PA4
+	DDRA |= _BV(PA5); //MISO
+	USICR = (1<<USIWM0)|(1<<USICS1); //slave device
+	USISR |= 1<<USIOIF; //overflow flag for signal end of transmission
+}
+
 int main( void )
 {
 	cli();
@@ -220,7 +304,8 @@ int main( void )
 	setup_pins();
 	timer_init();
 	sei();
-	setup_spi();
+	setup_data_spi();
+//	setup_spi();
 
 //	DDRB |= _BV(2);
 
@@ -231,9 +316,13 @@ int main( void )
 //	int16_t l = 0xffff;
 	int16_t r = 0xffff;
 
+	//wait for right channel just to force proper syncing of the first sample
+	while ((PINA & _BV(LRCLK)) == 0);
+
 	while(1)
 	{
-		WriteSample((int8_t*)&l,(int8_t*)&r);
+//		WriteSample((int8_t*)&l,(int8_t*)&r);
+		WriteSampleFromSPI();
 	}
 
 	PORTA = 0x0;
