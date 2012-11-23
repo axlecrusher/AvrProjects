@@ -102,10 +102,23 @@ static void timer_init( void )
 	TIMSK0 = 0x00; //no timer interrupts
 }
 
+//#define WRITEBIT_FAST
+
+#ifndef WRITEBIT_FAST
+
 //8 tick worst case, 7 best case
 #define WRITESAMPLEBIT(DATA, BIT) { PORTA &= ~(_BV(SCLK) | _BV(SDATA)); /*lower sclk*/ \
 		if ( ((DATA) & (BIT)) > 0) { PORTA |= _BV(SDATA); } /* 1 data, 2 or 3 clock ticks */ \
 		PORTA |= _BV(SCLK); } /* sclk up */
+
+#else
+
+//6 tick worst case, 5 best case (DANGEROUS STOMPS PA REGISTER)
+#define WRITESAMPLEBIT(DATA, BIT) { PORTA = 0; /*low sclk, low data*/ \
+		if ( ((DATA) & (BIT)) > 0) { PORTA |= _BV(SDATA); } /* 1 data, 2 or 3 clock ticks */ \
+		PORTA |= _BV(SCLK); } /* sclk up */
+
+#endif
 
 //9 clock ticks, CAREFUL!!! CONSTANT TIMING REGARDLESS OF DATA
 //compiler makes this into bullcrap asm with lots of relative jumps
