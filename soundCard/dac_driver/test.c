@@ -8,7 +8,7 @@
 
 #define SDATA PA1
 #define SCLK PA2
-#define LRCLK PA3
+#define LRCLK PA7
 #define MCLK PB2 //Fuses burned to system clock output
 
 #define WATCHCLOCKS
@@ -33,6 +33,7 @@ static void setup_clock( void )
 
 	CLKPR = 0x80;	/*Setup CLKPCE to be receptive*/
 	CLKPR = 0x00;	/*No scalar, set clock divisor here*/
+//	CLKPR = 0x03;	/*No scalar, set clock divisor here*/
 //	CKSEL = 0x02;
 }
 
@@ -74,7 +75,7 @@ volatile uint8_t stillWritingBits = 0;
 ISR( TIM1_COMPA_vect )
 {
 	//sclock need to be left in the up state before the callback
-	PORTA ^= _BV(LRCLK); //switch to left channel
+//	PORTA ^= _BV(LRCLK); //switch to left channel
 
 /*
 TCCR1B ^= 0x01;
@@ -94,17 +95,16 @@ static void timer_init( void )
 {
 	//LRCK has to do a copmlete cycle ever 512 clock ticks
 	//we have just 256 clock ticks to work with.
-	//it takes time to fire the interrupt so allow 20 clocks for that
-	//8bit timer
-	TCCR1A = 0x00; /* do not clear */
-	TCCR1B = (0x01 | 0x10); //every 8 ticks
-	OCR1A = 510; //every 512 clock ticks,
-	TIMSK1 = 0x02; //timer match A
-//	TIMSK0 = 0x00; //don't fire interrupt just let the counter clear
+
+	TCCR0A = 0x12; /* CTC, PA7 toggle */
+//	TCCR0A = 0x22; /* CTC, PA7 clear */
+	TCCR0B = 0x04; /* 256 ticks */
+	OCR0A = 1; // timer at 512 ticks
+	TIMSK0 = 0x00; //no timer interrupts
 }
 
 //9 clock ticks, CAREFUL!!! CONSTANT TIMING REGARDLESS OF DATA
-//compiler fills makes this into bullcrap asm with lots of relative jumps
+//compiler makes this into bullcrap asm with lots of relative jumps
 #define WRITESAMPLEBIT(DATA, BIT) { PORTA &= ~(_BV(SCLK)); /*lower sclk*/ \
 		if ( ((DATA) & (BIT)) == 0) { PORTA &= ~_BV(SDATA); } /* 1 data, 3 or 2 clock ticks */ \
 		if ( ((DATA) & (BIT)) > 0) { PORTA |= _BV(SDATA); } /* 1 data, 2 or 3 clock ticks (inverse of above) */ \
@@ -128,12 +128,14 @@ void WriteSample(int8_t* l, int8_t* r)
 	uint8_t lbyte = l[0]; //low byte
 
 	//LRCLK is in left channel state	
-	PORTA &= ~_BV(LRCLK); //switch to left channel
+//	PORTA &= ~_BV(LRCLK); //switch to left channel
+
+	while ((PINA & _BV(LRCLK)) > 0); //wait for left channel
 
 	PORTA &= ~(_BV(SCLK)); //bring sclock down
 	PORTA |= _BV(SCLK); //sclk up
 
-	//compiler made slow code so unroll with out own macro
+	//compiler made slow code so unroll with our own macro
 	WRITESAMPLEBIT2(hbyte, 7);
 	WRITESAMPLEBIT2(hbyte, 6);
 	WRITESAMPLEBIT2(hbyte, 5);
@@ -156,7 +158,8 @@ void WriteSample(int8_t* l, int8_t* r)
 	hbyte = r[1]; //high byte
 	lbyte = r[0]; //low byte
 
-	PORTA |= _BV(LRCLK); //switch to right channel
+	while ((PINA & _BV(LRCLK)) == 0); //wait for right channel
+
 	PORTA &= ~(_BV(SCLK)); //bring sclock down
 	PORTA |= _BV(SCLK); //sclk up
 
@@ -198,20 +201,18 @@ int main( void )
 	cli();
 	setup_clock();
 	setup_pins();
-//	timer_init();
+	timer_init();
 	sei();
-//	setup_spi();
+	setup_spi();
 
 //	DDRB |= _BV(2);
 
 //	PowerUpDac();
 //		PORTA |= 1<<SDATA;
 
-	int16_t l = 0x7fff;
+//	int16_t l = 0x7fff;
+	int16_t l = 0xffff;
 	int16_t r = 0xffff;
-
-//	PORTA ^= _BV(LRCLK); //switch channel
-//	PORTA ^= _BV(LRCLK); //switch channel
 
 	while(1)
 	{
