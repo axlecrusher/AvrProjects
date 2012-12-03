@@ -321,8 +321,8 @@ int main( void )
 
 	while(1)
 	{
-//		WriteSample((int8_t*)&l,(int8_t*)&r);
-		WriteSampleFromSPI();
+		WriteSample((int8_t*)&l,(int8_t*)&r);
+//		WriteSampleFromSPI();
 	}
 
 	PORTA = 0x0;
