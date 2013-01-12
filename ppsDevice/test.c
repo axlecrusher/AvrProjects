@@ -1,4 +1,50 @@
+#include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/sleep.h>
+#include <util/delay.h>
+#include <string.h>
+#include <avr/sfr_defs.h>
+
+//jitter seems to be 4237hz fast
+const uint16_t SECONDTICKS = 62500;// + 17;
+
+//clock seems to 102hz slower than it should
+//jump one timer tick every 2.5 seconds
+//or jump ticks 2 ever 5 seconds
+uint8_t seconds = 0;
+uint16_t drifted = 0;
+
+ISR( TIMER1_COMPA_vect )
+{
+	if ((PINC & _BV(PC6)) > 0)
+	{
+		//light toggled on, prepare to toggle off
+		TCCR1B &= ~_BV(WGM12); //CTC off
+		OCR1A = 12500; //200ms
+		seconds++;
+	}
+	else
+	{
+		//after light is toggled off, prepare to toggle it on again
+		TCCR1B |= _BV(WGM12); //CTC on
+		OCR1A = SECONDTICKS;
+/*
+		drifted += 102;
+		if (drifted >= 256)
+		{
+			drifted -= 256;
+			OCR1A++;
+		}
+*/
+
+		if (seconds == 5)
+		{
+			OCR1A+=2;
+			seconds = 0;
+		}
+
+	}
+}
 
 int main( void )
 {
@@ -13,10 +59,11 @@ int main( void )
 	//every 31250 clock ticks is 1/2 second
 	//toggle PC6 on every counter match
 	//on exactly at 1 second intervals
-	TCCR1A = _BV(COM1A0);
+	TCCR1A = _BV(COM1A0); //toggle OC1A (PC6)
 	TCCR1B = _BV(CS12) | _BV(WGM12); // CTC, 256 scalar
-	OCR1A = 31250; //clock ticks
-	TCNT1 = 31250;
+	OCR1A = SECONDTICKS; //clock ticks
+	TIMSK1 = _BV(OCIE1A);
+
 
 	sei();
 
