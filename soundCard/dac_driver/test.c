@@ -16,7 +16,7 @@
 uint8_t offset = 0;
 //volatile uint8_t WriteNewSample = 0x00;
 
-void WriteSample(int8_t* l, int8_t* r);
+void WriteSample();
 
 void delay_ms(uint32_t time) {
   uint32_t i;
@@ -41,8 +41,9 @@ void setup_pins()
 {
 	DDRA = 0;
 	DDRB = 0;
-
-	DDRA = (1<<SDATA) | (1<<SCLK) | (1<<LRCLK);
+PORTA = 0;
+PORTB = 0;
+	DDRA = (1<<SDATA) | (1<<SCLK) | (1<<LRCLK); //set output pins
 //	PORTA = (1<<SCLK); //up
 
 //	DDRB =  (1<<MCLK);
@@ -50,16 +51,6 @@ void setup_pins()
 
 //	PINA = 0x0;
 //	PINB = 0x0;
-}
-
-void TooSlow()
-{
-	TIMSK0 = 0;
-	while(1)
-	{
-		PORTA ^= _BV(LRCLK); //switch channel
-		delay_ms(500);
-	}
 }
 
 void FastBlink()
@@ -72,8 +63,6 @@ void FastBlink()
 	}
 }
 
-uint8_t ticksSinceInterrupt;
-volatile uint8_t stillWritingBits = 0;
 volatile int16_t mono = 0xffff;
 volatile int16_t left = 0xffff;
 volatile int16_t right = 0xffff;
@@ -82,40 +71,23 @@ ISR( TIM1_COMPA_vect )
 {
 	mono ^= 0x8000;
 	left ^= 0x8000;
-	right ^= 0x8000;
-//	OCR1A = OCR1A==4711?4712:4711;
-
-	//sclock need to be left in the up state before the callback
-//	PORTA ^= _BV(LRCLK); //switch to left channel
-
-/*
-TCCR1B ^= 0x01;
-printf("tick %d\n", ticksSinceInterrupt);
-TCCR1B ^= 0x01;
-*/
-#ifdef WATCHCLOCKS
-//	if (stillWritingBits>0) TooSlow();
-#endif
-
-//	PORTA ^= _BV(LRCLK); //switch channel
-//	PORTA &= ~(_BV(SCLK)); //bring sclock down
-//	WriteNewSample = 0x01;
+	right+=1000;
 }
 
 static void timer_init( void )
 {
-	//LRCK has to do a copmlete cycle ever 512 clock ticks
+	//LRCK has to do a complete cycle every 512 clock ticks
 	//we have just 256 clock ticks to work with.
-
-	TCCR0A = 0x12; // CTC, PA7 toggle
-	TCCR0B = 0x03; // 64 ticks
+	//setup timer for LRCLK
+	TCCR0A = _BV(COM0B0) | _BV(WGM01); // CTC, PA7 toggle
+	TCCR0B = _BV(CS01) | _BV(CS00); // 64 ticks
 	OCR0A = 3; // timer at 256 ticks (counts from 0)
 	TIMSK0 = 0x00; //no timer interrupts
 
 	TCCR1A = 0x00; // CTC
 	TCCR1B = _BV(WGM12) | _BV(CS10); // CTC, no prescaling
 //	OCR1A = 4711; // toggle so we make almost 2600hz square wave
-	OCR1A = 27840;
+	OCR1A = 27840; //440 hz square
 	TIMSK1 = _BV(OCIE1A); //no timer interrupts
 //	TIFR1 = _BV(OCF1A);
 
@@ -157,7 +129,7 @@ static void timer_init( void )
 		__asm__ __volatile__ ("sbi 59-32,1\n\t" ); \
 		PORTA |= _BV(SCLK); } /* sclk up */
 
-void WriteSample(int8_t* l, int8_t* r)
+void WriteSample()
 {
 	//left channel first
 	cli();
@@ -176,6 +148,7 @@ void WriteSample(int8_t* l, int8_t* r)
 	PORTA |= _BV(SCLK); //sclk up
 
 	//compiler made slow code so unroll with our own macro
+
 	WRITESAMPLEBIT(hbyte, 0x80);
 	WRITESAMPLEBIT(hbyte, 0x40);
 	WRITESAMPLEBIT(hbyte, 0x20);
@@ -194,8 +167,7 @@ void WriteSample(int8_t* l, int8_t* r)
 	WRITESAMPLEBIT(lbyte, 0x02);
 	WRITESAMPLEBIT(lbyte, 0x01);
 
-	cli();
-
+cli();
 	//right channel
 	hbyte = ((int8_t*)&right)[1]; //high byte
 	lbyte = ((int8_t*)&right)[0]; //low byte
@@ -226,93 +198,6 @@ void WriteSample(int8_t* l, int8_t* r)
 	WRITESAMPLEBIT(lbyte, 0x01);
 }
 
-void WriteSampleFromSPI()
-{
-	//left channel first
-	uint8_t sbyte = 0x00;
-
-	while ((PINA & _BV(LRCLK)) > 0); //wait for left channel
-
-	PORTA &= ~(_BV(SCLK)); //bring sclock down
-	PORTA |= _BV(SCLK); //sclk up
-	
-	//read high byte
-	while ((USISR & (1<<USIOIF)) == 0);
-	USISR |= 1<<USIOIF; //clear interrupt
-	sbyte = USIBR; //read buffered data
-
-	//compiler made slow code so unroll with our own macro
-	WRITESAMPLEBIT(sbyte, 0x80);
-	WRITESAMPLEBIT(sbyte, 0x40);
-	WRITESAMPLEBIT(sbyte, 0x20);
-	WRITESAMPLEBIT(sbyte, 0x10);
-	WRITESAMPLEBIT(sbyte, 0x08);
-	WRITESAMPLEBIT(sbyte, 0x04);
-	WRITESAMPLEBIT(sbyte, 0x02);
-	WRITESAMPLEBIT(sbyte, 0x01);
-
-	//read low byte
-	while ((USISR & (1<<USIOIF)) == 0);
-	USISR |= 1<<USIOIF; //clear interrupt
-	sbyte = USIBR; //read buffered data
-
-	WRITESAMPLEBIT(sbyte, 0x80);
-	WRITESAMPLEBIT(sbyte, 0x40);
-	WRITESAMPLEBIT(sbyte, 0x20);
-	WRITESAMPLEBIT(sbyte, 0x10);
-	WRITESAMPLEBIT(sbyte, 0x08);
-	WRITESAMPLEBIT(sbyte, 0x04);
-	WRITESAMPLEBIT(sbyte, 0x02);
-	WRITESAMPLEBIT(sbyte, 0x01);
-
-	while ((PINA & _BV(LRCLK)) == 0); //wait for right channel
-
-	PORTA &= ~(_BV(SCLK)); //bring sclock down
-	PORTA |= _BV(SCLK); //sclk up
-
-	//read high byte
-	while ((USISR & (1<<USIOIF)) == 0);
-	USISR |= 1<<USIOIF; //clear interrupt
-	sbyte = USIBR; //read buffered data
-
-	WRITESAMPLEBIT(sbyte, 0x80);
-	WRITESAMPLEBIT(sbyte, 0x40);
-	WRITESAMPLEBIT(sbyte, 0x20);
-	WRITESAMPLEBIT(sbyte, 0x10);
-	WRITESAMPLEBIT(sbyte, 0x08);
-	WRITESAMPLEBIT(sbyte, 0x04);
-	WRITESAMPLEBIT(sbyte, 0x02);
-	WRITESAMPLEBIT(sbyte, 0x01);
-
-	//read low byte
-	while ((USISR & (1<<USIOIF)) == 0);
-	USISR |= 1<<USIOIF; //clear interrupt
-	sbyte = USIBR; //read buffered data
-
-	WRITESAMPLEBIT(sbyte, 0x80);
-	WRITESAMPLEBIT(sbyte, 0x40);
-	WRITESAMPLEBIT(sbyte, 0x20);
-	WRITESAMPLEBIT(sbyte, 0x10);
-	WRITESAMPLEBIT(sbyte, 0x08);
-	WRITESAMPLEBIT(sbyte, 0x04);
-	WRITESAMPLEBIT(sbyte, 0x02);
-	WRITESAMPLEBIT(sbyte, 0x01);
-}
-
-void WriteTest()
-{
-	uint8_t i = 0;
-
-	PORTA |= 1<<SCLK; //sclk up
-
-	for(i=0;i<16;++i)
-	{
-		PORTA &= ~(1<<SCLK); //sclk down
-		PORTA |= (1<<SDATA); //set bit
-		PORTA |= 1<<SCLK; //sclk up, data read in, set SDATA before this
-	}
-}
-
 void setup_data_spi()
 {
 	DDRA &= 0xAF; //clear PA6, PA4
@@ -328,7 +213,7 @@ int main( void )
 	setup_pins();
 	timer_init();
 	sei();
-	setup_data_spi();
+//	setup_data_spi();
 //	setup_spi();
 
 //	DDRB |= _BV(2);
@@ -345,11 +230,7 @@ int main( void )
 
 	while(1)
 	{
-		cli();
-		l = mono;
-		r = 0;
-		sei();
-		WriteSample((int8_t*)&l,(int8_t*)&r);
+		WriteSample();
 //		WriteSampleFromSPI();
 	}
 
