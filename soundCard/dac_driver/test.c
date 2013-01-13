@@ -74,9 +74,17 @@ void FastBlink()
 
 uint8_t ticksSinceInterrupt;
 volatile uint8_t stillWritingBits = 0;
+volatile int16_t mono = 0xffff;
+volatile int16_t left = 0xffff;
+volatile int16_t right = 0xffff;
 
 ISR( TIM1_COMPA_vect )
 {
+	mono ^= 0x8000;
+	left ^= 0x8000;
+	right ^= 0x8000;
+//	OCR1A = OCR1A==4711?4712:4711;
+
 	//sclock need to be left in the up state before the callback
 //	PORTA ^= _BV(LRCLK); //switch to left channel
 
@@ -86,7 +94,7 @@ printf("tick %d\n", ticksSinceInterrupt);
 TCCR1B ^= 0x01;
 */
 #ifdef WATCHCLOCKS
-	if (stillWritingBits>0) TooSlow();
+//	if (stillWritingBits>0) TooSlow();
 #endif
 
 //	PORTA ^= _BV(LRCLK); //switch channel
@@ -99,10 +107,18 @@ static void timer_init( void )
 	//LRCK has to do a copmlete cycle ever 512 clock ticks
 	//we have just 256 clock ticks to work with.
 
-	TCCR0A = 0x12; /* CTC, PA7 toggle */
-	TCCR0B = 0x03; /* 64 ticks */
+	TCCR0A = 0x12; // CTC, PA7 toggle
+	TCCR0B = 0x03; // 64 ticks
 	OCR0A = 3; // timer at 256 ticks (counts from 0)
 	TIMSK0 = 0x00; //no timer interrupts
+
+	TCCR1A = 0x00; // CTC
+	TCCR1B = _BV(WGM12) | _BV(CS10); // CTC, no prescaling
+//	OCR1A = 4711; // toggle so we make almost 2600hz square wave
+	OCR1A = 27840;
+	TIMSK1 = _BV(OCIE1A); //no timer interrupts
+//	TIFR1 = _BV(OCF1A);
+
 }
 
 //#define WRITEBIT_FAST
@@ -144,8 +160,12 @@ static void timer_init( void )
 void WriteSample(int8_t* l, int8_t* r)
 {
 	//left channel first
-	uint8_t hbyte = l[1]; //high byte
-	uint8_t lbyte = l[0]; //low byte
+	cli();
+
+	uint8_t hbyte = ((int8_t*)&left)[1]; //high byte
+	uint8_t lbyte = ((int8_t*)&left)[0]; //low byte
+
+	sei();
 
 	//LRCLK is in left channel state	
 //	PORTA &= ~_BV(LRCLK); //switch to left channel
@@ -174,9 +194,13 @@ void WriteSample(int8_t* l, int8_t* r)
 	WRITESAMPLEBIT(lbyte, 0x02);
 	WRITESAMPLEBIT(lbyte, 0x01);
 
+	cli();
+
 	//right channel
-	hbyte = r[1]; //high byte
-	lbyte = r[0]; //low byte
+	hbyte = ((int8_t*)&right)[1]; //high byte
+	lbyte = ((int8_t*)&right)[0]; //low byte
+
+	sei();
 
 	while ((PINA & _BV(LRCLK)) == 0); //wait for right channel
 
@@ -312,7 +336,7 @@ int main( void )
 //	PowerUpDac();
 //		PORTA |= 1<<SDATA;
 
-	int16_t l = 0x7fff;
+	int16_t l = 0xffff;
 //	int16_t l = 0xffff;
 	int16_t r = 0xffff;
 
@@ -321,6 +345,10 @@ int main( void )
 
 	while(1)
 	{
+		cli();
+		l = mono;
+		r = 0;
+		sei();
 		WriteSample((int8_t*)&l,(int8_t*)&r);
 //		WriteSampleFromSPI();
 	}
