@@ -55,12 +55,22 @@ PORTB = 0;
 
 void FastBlink()
 {
-	TIMSK0 = 0;
 	while(1)
 	{
 		PORTA ^= _BV(LRCLK); //switch channel
 		delay_ms(100);
 	}
+}
+
+void ErrorBlink()
+{
+	//slow system clock way down
+	CLKPR = 0x80;	/*Setup CLKPCE to be receptive*/
+	CLKPR = _BV(CLKPS1) | _BV(CLKPS0); //8 ticks
+
+	TCCR0B = _BV(CS02) | _BV(CS00); // 1024 ticks
+	OCR0A = 128; // timer at 256 ticks (counts from 0)
+	while(1);
 }
 
 volatile int16_t mono = 0xffff;
@@ -69,9 +79,11 @@ volatile int16_t right = 0xffff;
 
 ISR( TIM1_COMPA_vect )
 {
+cli();
 	mono ^= 0x8000;
 	left ^= 0x8000;
 	right+=1000;
+sei();
 }
 
 static void timer_init( void )
@@ -90,6 +102,8 @@ static void timer_init( void )
 	OCR1A = 27840; //440 hz square
 	TIMSK1 = _BV(OCIE1A); //no timer interrupts
 //	TIFR1 = _BV(OCF1A);
+
+	
 
 }
 
@@ -129,22 +143,17 @@ static void timer_init( void )
 		__asm__ __volatile__ ("sbi 59-32,1\n\t" ); \
 		PORTA |= _BV(SCLK); } /* sclk up */
 
+#define RIGHTCHANNEL _BV(LRCLK)
+
 void WriteSample()
 {
 	//left channel first
-	cli();
-
 	uint8_t hbyte = ((int8_t*)&left)[1]; //high byte
 	uint8_t lbyte = ((int8_t*)&left)[0]; //low byte
 
-	sei();
+	while ((PINA & _BV(LRCLK)) == RIGHTCHANNEL); //wait for left channel
 
-	//LRCLK is in left channel state	
-//	PORTA &= ~_BV(LRCLK); //switch to left channel
-
-	while ((PINA & _BV(LRCLK)) > 0); //wait for left channel
-
-	PORTA &= ~(_BV(SCLK)); //bring sclock down
+	PORTA &= ~_BV(SCLK); //bring sclock down
 	PORTA |= _BV(SCLK); //sclk up
 
 	//compiler made slow code so unroll with our own macro
@@ -167,16 +176,13 @@ void WriteSample()
 	WRITESAMPLEBIT(lbyte, 0x02);
 	WRITESAMPLEBIT(lbyte, 0x01);
 
-cli();
 	//right channel
 	hbyte = ((int8_t*)&right)[1]; //high byte
 	lbyte = ((int8_t*)&right)[0]; //low byte
 
-	sei();
+	while ((PINA & _BV(LRCLK)) != RIGHTCHANNEL); //wait for right channel
 
-	while ((PINA & _BV(LRCLK)) == 0); //wait for right channel
-
-	PORTA &= ~(_BV(SCLK)); //bring sclock down
+	PORTA &= ~_BV(SCLK); //bring sclock down
 	PORTA |= _BV(SCLK); //sclk up
 
 	WRITESAMPLEBIT(hbyte, 0x80);
@@ -196,6 +202,10 @@ cli();
 	WRITESAMPLEBIT(lbyte, 0x04);
 	WRITESAMPLEBIT(lbyte, 0x02);
 	WRITESAMPLEBIT(lbyte, 0x01);
+
+//	_delay_ms(5); //uncomment to test taking too long
+	if ((PINA & _BV(LRCLK)) != RIGHTCHANNEL)
+		ErrorBlink();
 }
 
 void setup_data_spi()
@@ -226,7 +236,7 @@ int main( void )
 	int16_t r = 0xffff;
 
 	//wait for right channel just to force proper syncing of the first sample
-	while ((PINA & _BV(LRCLK)) == 0);
+	while ((PINA & _BV(LRCLK)) != RIGHTCHANNEL);
 
 	while(1)
 	{
