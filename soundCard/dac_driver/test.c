@@ -80,8 +80,8 @@ volatile int16_t right = 0xffff;
 ISR( TIM1_COMPA_vect )
 {
 cli();
-	mono ^= 0x8000;
-	left ^= 0x8000;
+	mono ^= 0x4000;
+	left ^= 0x4000;
 	right+=1000;
 sei();
 }
@@ -95,14 +95,14 @@ static void timer_init( void )
 	TCCR0B = _BV(CS01) | _BV(CS00); // 64 ticks
 	OCR0A = 3; // timer at 256 ticks (counts from 0)
 	TIMSK0 = 0x00; //no timer interrupts
-
+/*
 	TCCR1A = 0x00; // CTC
 	TCCR1B = _BV(WGM12) | _BV(CS10); // CTC, no prescaling
 //	OCR1A = 4711; // toggle so we make almost 2600hz square wave
 	OCR1A = 27840; //440 hz square
 	TIMSK1 = _BV(OCIE1A); //no timer interrupts
 //	TIFR1 = _BV(OCF1A);
-
+*/
 	
 
 }
@@ -180,6 +180,10 @@ void WriteSample()
 	hbyte = ((int8_t*)&right)[1]; //high byte
 	lbyte = ((int8_t*)&right)[0]; //low byte
 
+	//check to see if we take too long
+	if ((PINA & _BV(LRCLK)) == RIGHTCHANNEL)
+		ErrorBlink();
+
 	while ((PINA & _BV(LRCLK)) != RIGHTCHANNEL); //wait for right channel
 
 	PORTA &= ~_BV(SCLK); //bring sclock down
@@ -202,8 +206,9 @@ void WriteSample()
 	WRITESAMPLEBIT(lbyte, 0x04);
 	WRITESAMPLEBIT(lbyte, 0x02);
 	WRITESAMPLEBIT(lbyte, 0x01);
-
+ 
 //	_delay_ms(5); //uncomment to test taking too long
+	//check to see if we take too long
 	if ((PINA & _BV(LRCLK)) != RIGHTCHANNEL)
 		ErrorBlink();
 }
@@ -238,10 +243,18 @@ int main( void )
 	//wait for right channel just to force proper syncing of the first sample
 	while ((PINA & _BV(LRCLK)) != RIGHTCHANNEL);
 
+uint8_t i = 0;
 	while(1)
 	{
+		if (i >= 109)
+		{
+			left ^= 0x8000;
+right+=1000;
+			i = 0;
+		}
 		WriteSample();
 //		WriteSampleFromSPI();
+		++i;
 	}
 
 	PORTA = 0x0;
