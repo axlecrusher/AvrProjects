@@ -7,8 +7,8 @@
 #include "avr_print.h"
 
 #define SDATA PA1
-#define SCLK PA2
-#define LRCLK PA7
+#define SCLK PA5
+#define LRCLK PA6
 #define MCLK PB2 //Fuses burned to system clock output
 
 #define WATCHCLOCKS
@@ -43,7 +43,7 @@ void setup_pins()
 	DDRB = 0;
 PORTA = 0;
 PORTB = 0;
-	DDRA = (1<<SDATA) | (1<<SCLK) | (1<<LRCLK); //set output pins
+	DDRA = (1<<SDATA) | (1<<SCLK) | (1<<LRCLK) | _BV(PA7); //set output pins
 //	PORTA = (1<<SCLK); //up
 
 //	DDRB =  (1<<MCLK);
@@ -77,35 +77,34 @@ volatile int16_t mono = 0xffff;
 volatile int16_t left = 0xffff;
 volatile int16_t right = 0xffff;
 
-ISR( TIM1_COMPA_vect )
-{
-cli();
-	mono ^= 0x4000;
-	left ^= 0x4000;
-	right+=1000;
-sei();
-}
-
 static void timer_init( void )
 {
 	//LRCK has to do a complete cycle every 512 clock ticks
 	//we have just 256 clock ticks to work with.
 	//setup timer for LRCLK
+
 	TCCR0A = _BV(COM0B0) | _BV(WGM01); // CTC, PA7 toggle
 	TCCR0B = _BV(CS01) | _BV(CS00); // 64 ticks
 	OCR0A = 3; // timer at 256 ticks (counts from 0)
 	TIMSK0 = 0x00; //no timer interrupts
-/*
-	TCCR1A = 0x00; // CTC
+
+	TCCR1A = _BV(COM1A0) | _BV(COM1B0); // toggle OC1A/OC1B
 	TCCR1B = _BV(WGM12) | _BV(CS10); // CTC, no prescaling
-//	OCR1A = 4711; // toggle so we make almost 2600hz square wave
-	OCR1A = 27840; //440 hz square
-	TIMSK1 = _BV(OCIE1A); //no timer interrupts
-//	TIFR1 = _BV(OCF1A);
-*/
-	
+	OCR1A = 255; //440 hz square
+	TIMSK1 = 0x00; //no timer interrupts
 
 }
+
+static void disableOC1B()
+{
+	TCCR1A = _BV(COM1A0);
+}
+
+static void enableOC1B()
+{
+	TCCR1A = _BV(COM1A0) | _BV(COM1B0);
+}
+
 
 //#define WRITEBIT_FAST
 
@@ -153,7 +152,9 @@ void WriteSample()
 
 	while ((PINA & _BV(LRCLK)) == RIGHTCHANNEL); //wait for left channel
 
-	PORTA &= ~_BV(SCLK); //bring sclock down
+	disableOC1B();
+
+//	PORTA &= ~_BV(SCLK); //bring sclock down
 	PORTA |= _BV(SCLK); //sclk up
 
 	//compiler made slow code so unroll with our own macro
@@ -180,13 +181,18 @@ void WriteSample()
 	hbyte = ((int8_t*)&right)[1]; //high byte
 	lbyte = ((int8_t*)&right)[0]; //low byte
 
+	enableOC1B();
+
 	//check to see if we take too long
 	if ((PINA & _BV(LRCLK)) == RIGHTCHANNEL)
 		ErrorBlink();
 
 	while ((PINA & _BV(LRCLK)) != RIGHTCHANNEL); //wait for right channel
 
-	PORTA &= ~_BV(SCLK); //bring sclock down
+	//disable OC1B
+	disableOC1B();
+
+//	PORTA &= ~_BV(SCLK); //bring sclock down
 	PORTA |= _BV(SCLK); //sclk up
 
 	WRITESAMPLEBIT(hbyte, 0x80);
@@ -207,6 +213,9 @@ void WriteSample()
 	WRITESAMPLEBIT(lbyte, 0x02);
 	WRITESAMPLEBIT(lbyte, 0x01);
  
+	//enable OC1B
+	enableOC1B();
+
 //	_delay_ms(5); //uncomment to test taking too long
 	//check to see if we take too long
 	if ((PINA & _BV(LRCLK)) != RIGHTCHANNEL)
@@ -241,6 +250,8 @@ int main( void )
 	int16_t r = 0xffff;
 
 	//wait for right channel just to force proper syncing of the first sample
+	PORTA |= _BV(SCLK); //sclk up
+
 	while ((PINA & _BV(LRCLK)) != RIGHTCHANNEL);
 
 uint8_t i = 0;
