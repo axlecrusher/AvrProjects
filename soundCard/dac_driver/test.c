@@ -65,7 +65,7 @@ void FastBlink()
 void ErrorBlink()
 {
 	//slow system clock way down
-	CLKPR = 0x80;	/*Setup CLKPCE to be receptive*/
+	CLKPR = 0x80;	//Setup CLKPCE to be receptive
 	CLKPR = _BV(CLKPS1) | _BV(CLKPS0); //8 ticks
 
 	TCCR0B = _BV(CS02) | _BV(CS00); // 1024 ticks
@@ -73,10 +73,16 @@ void ErrorBlink()
 	while(1);
 }
 
+/*
 volatile int16_t mono = 0xffff;
 volatile int16_t left = 0xffff;
 volatile int16_t right = 0xffff;
+*/
 
+int8_t lr_samples[4];
+uint8_t wIndex = 0;
+
+/*
 ISR( TIM1_COMPA_vect )
 {
 cli();
@@ -84,6 +90,34 @@ cli();
 	left ^= 0x4000;
 	right+=1000;
 sei();
+}
+*/
+
+/*
+ISR(USI_OVF_vect)
+{
+	USIDR |= _BV(USIOIF);
+	lr_samples[wIndex] = USIBR;
+	wIndex++;
+	wIndex &= 0x03; //0-3 only
+}
+*/
+
+void WaitForSPIByte()
+{
+	while (!(USISR & _BV(USIOIF)));
+	USIDR |= _BV(USIOIF); //clear oveflow flag	
+}
+
+static void ReadSPI()
+{
+	if (USISR & _BV(USIOIF))
+	{
+		USIDR |= _BV(USIOIF); //clear oveflow flag
+		lr_samples[wIndex] = USIBR;
+		wIndex++;
+		wIndex &= 0x03; //0-3 only
+	}
 }
 
 static void timer_init( void )
@@ -148,10 +182,10 @@ static void timer_init( void )
 void WriteSample()
 {
 	//left channel first
-	uint8_t hbyte = ((int8_t*)&left)[1]; //high byte
-	uint8_t lbyte = ((int8_t*)&left)[0]; //low byte
+	uint8_t hbyte = lr_samples[0]; //high byte
+	uint8_t lbyte = lr_samples[1]; //low byte
 
-	while ((PINA & _BV(LRCLK)) == RIGHTCHANNEL); //wait for left channel
+	while ((PINA & _BV(LRCLK)) == RIGHTCHANNEL) ReadSPI(); //wait for left channel
 
 	PORTA &= ~_BV(SCLK); //bring sclock down
 	PORTA |= _BV(SCLK); //sclk up
@@ -167,6 +201,8 @@ void WriteSample()
 	WRITESAMPLEBIT(hbyte, 0x02);
 	WRITESAMPLEBIT(hbyte, 0x01);
 
+	ReadSPI();
+
 	WRITESAMPLEBIT(lbyte, 0x80);
 	WRITESAMPLEBIT(lbyte, 0x40);
 	WRITESAMPLEBIT(lbyte, 0x20);
@@ -176,15 +212,17 @@ void WriteSample()
 	WRITESAMPLEBIT(lbyte, 0x02);
 	WRITESAMPLEBIT(lbyte, 0x01);
 
+	ReadSPI();
+
 	//right channel
-	hbyte = ((int8_t*)&right)[1]; //high byte
-	lbyte = ((int8_t*)&right)[0]; //low byte
+	hbyte = lr_samples[2]; //high byte
+	lbyte = lr_samples[3]; //low byte
 
 	//check to see if we take too long
 	if ((PINA & _BV(LRCLK)) == RIGHTCHANNEL)
 		ErrorBlink();
 
-	while ((PINA & _BV(LRCLK)) != RIGHTCHANNEL); //wait for right channel
+	while ((PINA & _BV(LRCLK)) != RIGHTCHANNEL) ReadSPI(); //wait for right channel
 
 	PORTA &= ~_BV(SCLK); //bring sclock down
 	PORTA |= _BV(SCLK); //sclk up
@@ -198,6 +236,8 @@ void WriteSample()
 	WRITESAMPLEBIT(hbyte, 0x02);
 	WRITESAMPLEBIT(hbyte, 0x01);
 
+	ReadSPI();
+
 	WRITESAMPLEBIT(lbyte, 0x80);
 	WRITESAMPLEBIT(lbyte, 0x40);
 	WRITESAMPLEBIT(lbyte, 0x20);
@@ -206,7 +246,8 @@ void WriteSample()
 	WRITESAMPLEBIT(lbyte, 0x04);
 	WRITESAMPLEBIT(lbyte, 0x02);
 	WRITESAMPLEBIT(lbyte, 0x01);
- 
+
+	ReadSPI(); 
 //	_delay_ms(5); //uncomment to test taking too long
 	//check to see if we take too long
 	if ((PINA & _BV(LRCLK)) != RIGHTCHANNEL)
@@ -217,18 +258,25 @@ void setup_data_spi()
 {
 	DDRA &= 0xAF; //clear PA6, PA4
 	DDRA |= _BV(PA5); //MISO
-	USICR = (1<<USIWM0)|(1<<USICS1); //slave device
-	USISR |= 1<<USIOIF; //overflow flag for signal end of transmission
+	USICR = _BV(USIWM0) | _BV(USICS1);// | _BV(USIOIE); //3 wire slave device, interrupt
+	USISR |= _BV(USIOIF); //overflow flag for signal end of transmission
 }
 
 int main( void )
 {
 	cli();
 	setup_clock();
+
+	memset(lr_samples,0, sizeof(uint8_t)*4);
+
 	setup_pins();
 	timer_init();
+
+	setup_data_spi();
 	sei();
-//	setup_data_spi();
+
+//	USIDR = 0x00;
+
 //	setup_spi();
 
 //	DDRB |= _BV(2);
@@ -236,13 +284,26 @@ int main( void )
 //	PowerUpDac();
 //		PORTA |= 1<<SDATA;
 
-	int16_t l = 0xffff;
 //	int16_t l = 0xffff;
-	int16_t r = 0xffff;
+//	int16_t l = 0xffff;
+//	int16_t r = 0xffff;
+
+	//throw first sample away
+	WaitForSPIByte();
+	WaitForSPIByte();
+	WaitForSPIByte();
+	WaitForSPIByte();
 
 	//wait for right channel just to force proper syncing of the first sample
-	while ((PINA & _BV(LRCLK)) != RIGHTCHANNEL);
+	while ((PINA & _BV(LRCLK)) != RIGHTCHANNEL) ReadSPI();
 
+	while (1)
+	{
+		WriteSample();
+//		while (USISR & _BV(USIOIF)); //wait for SPI data
+//		left[
+	}
+/*
 uint8_t i = 0;
 	while(1)
 	{
@@ -256,7 +317,7 @@ right+=1000;
 //		WriteSampleFromSPI();
 		++i;
 	}
-
+*/
 	PORTA = 0x0;
 
 	return 0;
