@@ -13,6 +13,10 @@
 #define BUFFERLEN 32
 //uint8_t sendbuffer[BUFFERLEN];
 
+volatile int16_t mono = 0xffff;
+volatile int16_t left = 0xffff;
+volatile int16_t right = 0xffff;
+
 static void setup_clock()
 {
 	CLKPR = 0x80;	/*Setup CLKPCE to be receptive*/
@@ -37,22 +41,22 @@ ISR(TIMER1_COMPA_vect)
 		we wait for sending to complete */
 
 	//send left MSB
-	SPDR = 0xA8;
+	SPDR = ((int8_t*)&left)[1];
 	OCR1AL = 77; //low byte of 333
 	while(!(SPSR & _BV(SPIF))); //wait for complete
 
 	//send left LSB
-	SPDR = 0xA8;
+	SPDR = ((int8_t*)&left)[0];
 	++clockSkew;
 	while(!(SPSR & _BV(SPIF))); //wait for complete
 
 	//send right MSB
-	SPDR = 0xA8;
+	SPDR = ((uint8_t*)&right)[1];
 	if (clockSkew>=3) OCR1AL = 78; //low byte of 334, make up for 333.333
 	while(!(SPSR & _BV(SPIF))); //wait for complete
 
 	//send right LSB
-	SPDR = 0xA8;
+	SPDR = ((uint8_t*)&right)[0];
 	if (clockSkew>=3) clockSkew = 0;
 	while(!(SPSR & _BV(SPIF))); //wait for complete
 
@@ -76,7 +80,10 @@ int main( void )
 //	memset(sendbuffer,0,BUFFERLEN);
 
 	setup_clock();
+
 SPI_MasterInit();
+
+	_delay_ms(10); //wait for tiny 44 to be ready for data
 	setup_timers();
 
 	//Don't touch any PORTB below 4, those are for printf
@@ -90,7 +97,17 @@ SPI_MasterInit();
 
 	sei();
 
-	while(1);
+	uint8_t i = 0;
+	while(1)
+	{
+		if (i >= 71)
+		{
+			left ^= 0x8000;
+			right+=1000;
+			i = 0;
+		}
+		++i;
+	}
 
 	return 0;
 }
