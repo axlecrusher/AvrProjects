@@ -14,7 +14,7 @@
 #define WATCHCLOCKS
 
 volatile int8_t lr_samples[4];
-volatile uint8_t wIndex = 0;
+uint8_t wIndex = 0;
 
 uint8_t offset = 0;
 //volatile uint8_t WriteNewSample = 0x00;
@@ -114,7 +114,7 @@ sei();
 ISR(USI_OVF_vect)
 {
 	USIDR |= _BV(USIOIF); //clear oveflow flag
-	lr_samples[wIndex] = USIBR;
+	*(lr_samples+wIndex) = USIBR;
 	wIndex++;
 	wIndex &= 0x03; //0-3 only
 //	if(wIndex==0) SwapBuffers();
@@ -215,8 +215,8 @@ void WriteSample()
 	lbyte = lr_samples[3]; //low byte
 
 	//check to see if we take too long
-//	if ((PINA & _BV(LRCLK)) == RIGHTCHANNEL)
-//		ErrorBlink();
+	if ((PINA & _BV(LRCLK)) == RIGHTCHANNEL)
+		ErrorBlink();
 
 	while ((PINA & _BV(LRCLK)) != RIGHTCHANNEL); //wait for right channel
 
@@ -243,8 +243,8 @@ void WriteSample()
 
 //	_delay_ms(5); //uncomment to test taking too long
 	//check to see if we take too long
-//	if ((PINA & _BV(LRCLK)) != RIGHTCHANNEL)
-//		ErrorBlink();
+	if ((PINA & _BV(LRCLK)) != RIGHTCHANNEL)
+		ErrorBlink();
 }
 
 void setup_data_spi()
@@ -284,11 +284,9 @@ int main( void )
 	//wait for right channel just to force proper syncing of the first sample
 	while ((PINA & _BV(LRCLK)) != RIGHTCHANNEL);
 
-	while (1)
-	{
-//		WriteSample();
-		WriteSample_asm();
-	}
+//	while (1) WriteSample();
+	WriteSample_asm();
+
 /*
 uint8_t i = 0;
 	while(1)
