@@ -5,8 +5,8 @@ PROGPART=t44
 CFLAGS=-g -O2 -mmcu=$(PART) -DF_CPU=24500000UL -Wall
 CC=avr-gcc
 
-OBJS = test.o
-SRCS = test.c
+OBJS = test.o max5556.o
+SRCS = test.c max5556.S
 
 program.elf : $(OBJS)
 	avr-gcc -I  $(CFLAGS) -mmcu=$(PART) -Wl,-Map,program.map -o $@ $^ -L/usr/lib/binutils/avr/2.18
