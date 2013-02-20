@@ -111,6 +111,7 @@ sei();
 
 
 //11 clock cycles to enter and leave the interrupt
+/*
 ISR(USI_OVF_vect)
 {
 	USIDR |= _BV(USIOIF); //clear oveflow flag
@@ -119,6 +120,7 @@ ISR(USI_OVF_vect)
 	wIndex &= 0x03; //0-3 only
 //	if(wIndex==0) SwapBuffers();
 }
+*/
 
 /*
 void WaitForSPIByte()

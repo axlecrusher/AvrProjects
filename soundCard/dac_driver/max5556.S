@@ -1,7 +1,7 @@
 #define _SFR_ASM_COMPAT 1
 #define __SFR_OFFSET 0
 
-//#include <avr/io.h>
+#include <avr/io.h>
 
 #define REG_ZERO 1
 #define PORTA 59-32
@@ -10,6 +10,28 @@
 #define REG_ONEBIT r21
 #define REG_LOWBYTE r24
 #define REG_HIGHBYTE r25
+
+//USI_OVF_vect
+.global __vector_16
+__vector_16:
+
+	sbi 47-32,6 //clear oveflow flag
+
+	//*(lr_samples+wIndex) = USIBR;
+	lds r17,wIndex
+	mov r30,r17
+	ldi r31,lo8(0)
+	in r18,48-32
+	subi r30,lo8(-(lr_samples))
+	sbci r31,hi8(-(lr_samples))
+	st Z,r18
+	//wIndex++;
+	subi r17,lo8(-(1))
+	//wIndex &= 0x03; //0-3 only
+	andi r17,lo8(3)
+	sts wIndex,r17
+
+reti
 
 .global	WriteSample_asm
 WriteSample_asm:
