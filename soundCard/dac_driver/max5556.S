@@ -14,9 +14,16 @@
 .global	WriteSample_asm
 WriteSample_asm:
 
-	push REG_ONEBIT
-	push REG_LOWBYTE
-	push REG_HIGHBYTE
+//the rest of the program is in this loop forever
+//who cares what registers we stop, we are never leaving this loop.
+
+//	push REG_ONEBIT
+//	push REG_LOWBYTE
+//	push REG_HIGHBYTE
+//	push REG_ZERO
+//	clr REG_ZERO
+
+.WRITELOOP:
 
 	ldi REG_ONEBIT,0x02 //SDATA high
 
@@ -117,17 +124,20 @@ WriteSample_asm:
 	out PORTA,REG_ONEBIT	//SDATA high if bit == 1
 	sbi PORTA,2				//SCLK high
 
-	//wait for right
-.WAIT_FOR_RIGHT:
-	sbis PINA,7
-	rjmp .WAIT_FOR_RIGHT
-
 	//right channel
 	//uint8_t hbyte = lr_samples[0]; //high byte
 	lds REG_HIGHBYTE,lr_samples+2
 
 	//uint8_t lbyte = lr_samples[1]; //low byte
 	lds REG_LOWBYTE,lr_samples+3
+
+	sbic 57-32,7
+	rcall ErrorBlink
+
+	//wait for right
+.WAIT_FOR_RIGHT:
+	sbis PINA,7
+	rjmp .WAIT_FOR_RIGHT
 
 	//do high byte
 	out PORTA,REG_ZERO		//sclk down, 0 data
@@ -212,9 +222,15 @@ WriteSample_asm:
 	out PORTA,REG_ONEBIT	//SDATA high if bit == 1
 	sbi PORTA,2				//SCLK high
 
-	pop REG_HIGHBYTE
-	pop REG_LOWBYTE
-	pop REG_ONEBIT
+	sbis 57-32,7
+	rcall ErrorBlink
+
+rjmp .WRITELOOP
+
+//	pop REG_ZERO
+//	pop REG_HIGHBYTE
+//	pop REG_LOWBYTE
+//	pop REG_ONEBIT
 
 ret
 
