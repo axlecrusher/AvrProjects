@@ -253,7 +253,8 @@ void setup_data_spi()
 {
 	DDRA &= 0xAF; //clear PA6, PA4
 	DDRA |= _BV(PA5); //MISO
-	USICR = _BV(USIWM0) | _BV(USICS1) | _BV(USIOIE); //3 wire slave device, interrupt
+	USICR = _BV(USIWM0) | _BV(USICS1);// | _BV(USIOIE); //3 wire slave device
+	//enable interrupt in assembly after we are in the program loop
 	USISR |= _BV(USIOIF); //overflow flag for signal end of transmission
 }
 

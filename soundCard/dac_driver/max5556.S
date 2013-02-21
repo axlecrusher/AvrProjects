@@ -2,39 +2,82 @@
 #define __SFR_OFFSET 0
 
 #include <avr/io.h>
+#include <avr/interrupt.h>
 
-#define REG_ZERO 1
+#define REG_ZERO r0
+#define REG_INDEX r20
+
 #define PORTA 59-32
 #define PINA 57-32
+#define USIBR 48-32
 
 #define REG_ONEBIT r21
-#define REG_LOWBYTE r24
-#define REG_HIGHBYTE r25
+#define REG_LOWBYTE r22
+#define REG_HIGHBYTE r23
+
+#define REG_LH r16
+#define REG_LL r17
+#define REG_RH r18
+#define REG_RL r19
 
 //USI_OVF_vect
 .global __vector_16
 __vector_16:
 
-	sbi 47-32,6 //clear oveflow flag
+	sbi 47-32,6 ;clear oveflow flag, 2
 
-	//*(lr_samples+wIndex) = USIBR;
-	lds r17,wIndex
-	mov r30,r17
-	ldi r31,lo8(0)
-	in r18,48-32
-	subi r30,lo8(-(lr_samples))
-	sbci r31,hi8(-(lr_samples))
-	st Z,r18
-	//wIndex++;
-	subi r17,lo8(-(1))
-	//wIndex &= 0x03; //0-3 only
-	andi r17,lo8(3)
-	sts wIndex,r17
+set_pointer:
+;	subi r30,lo8(-(lr_samples))	;1
+;	sbci r31,hi8(-(lr_samples))	;1
+
+store:
+;	in REG_LH,USIBR				;1
+;	st +Z,REG_LH				;2, store increment
+
+
+
+	mov r30,REG_INDEX 			;1
+	ldi r31,lo8(0)				;1
+	in REG_LH,USIBR				;1
+	subi r30,lo8(-(lr_samples))	;1
+	sbci r31,hi8(-(lr_samples))	;1
+	st Z,REG_LH					;2
+	inc REG_INDEX				;1
+	andi REG_INDEX,lo8(3)		;1
+
+
+
+
+
+
+;	in REG_LH, USIBR
+	
+;	inc REG_INDEX
+;	andi REG_INDEX,lo8(3)	;0-3 only
+	
+;	//*(lr_samples+wIndex) = USIBR;
+;	lds r17,wIndex
+;	mov r30,r17
+;	ldi r31,lo8(0)
+;	in r18,48-32
+;	subi r30,lo8(-(lr_samples))
+;	sbci r31,hi8(-(lr_samples))
+;	st Z,r18
+;	//wIndex++;
+;	subi r17,lo8(-(1))
+;	//wIndex &= 0x03; //0-3 only
+;	andi r17,lo8(3)
+;	sts wIndex,r17
 
 reti
 
 .global	WriteSample_asm
 WriteSample_asm:
+
+	clr REG_ZERO
+	clr REG_INDEX
+	
+	sbi 45-32,6		;Counter Overflow Interrupt Enable
 
 //the rest of the program is in this loop forever
 //who cares what registers we stop, we are never leaving this loop.
