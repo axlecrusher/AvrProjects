@@ -33,6 +33,8 @@ static void setup_timers()
 
 uint8_t clockSkew = 0;
 
+uint8_t samples = 0;
+
 ISR(TIMER1_COMPA_vect) 
 {
 	PORTD ^= _BV(PD6);
@@ -59,6 +61,16 @@ ISR(TIMER1_COMPA_vect)
 	SPDR = ((uint8_t*)&right)[0];
 	if (clockSkew>=3) clockSkew = 0;
 	while(!(SPSR & _BV(SPIF))); //wait for complete
+
+
+	//simple test tones can be made here
+	++samples;
+	if (samples>=100)
+	{
+		left ^= 0x8000;
+		right+=1000;
+		samples = 0;
+	}
 
 }
 
@@ -97,10 +109,12 @@ SPI_MasterInit();
 
 	sei();
 
-	uint8_t i = 0;
+	while(1);
+/*
+	uint16_t i = 0;
 	while(1)
 	{
-		if (i >= 71)
+		if (i >= 710)
 		{
 			left ^= 0x8000;
 			right+=1000;
@@ -108,7 +122,7 @@ SPI_MasterInit();
 		}
 		++i;
 	}
-
+*/
 	return 0;
 }
 
