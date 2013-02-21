@@ -76,6 +76,7 @@ WriteSample_asm:
 
 	clr REG_ZERO
 	clr REG_INDEX
+	ldi REG_ONEBIT,0x02 //SDATA high
 	
 	sbi 45-32,6		;Counter Overflow Interrupt Enable
 
@@ -90,14 +91,14 @@ WriteSample_asm:
 
 .WRITELOOP:
 
-	ldi REG_ONEBIT,0x02 //SDATA high
-
+cli
 	//left channel first
 	//uint8_t hbyte = lr_samples[0]; //high byte
 	lds REG_HIGHBYTE,lr_samples
 
 	//uint8_t lbyte = lr_samples[1]; //low byte
 	lds REG_LOWBYTE,lr_samples+1
+sei
 
 .WAIT_FOR_LEFT:
 	sbic PINA,7
@@ -189,15 +190,17 @@ WriteSample_asm:
 	out PORTA,REG_ONEBIT	//SDATA high if bit == 1
 	sbi PORTA,2				//SCLK high
 
+	sbic 57-32,7
+	rcall ErrorBlink
+
+cli
 	//right channel
 	//uint8_t hbyte = lr_samples[0]; //high byte
 	lds REG_HIGHBYTE,lr_samples+2
 
 	//uint8_t lbyte = lr_samples[1]; //low byte
 	lds REG_LOWBYTE,lr_samples+3
-
-	sbic 57-32,7
-	rcall ErrorBlink
+sei
 
 	//wait for right
 .WAIT_FOR_RIGHT:
