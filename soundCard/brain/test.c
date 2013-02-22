@@ -17,12 +17,16 @@ volatile int16_t mono = 0xffff;
 volatile int16_t left = 0xffff;
 volatile int16_t right = 0xffff;
 
+void SendLeftChannel();
+void SendRightChannel();
+
 static void setup_clock()
 {
 	CLKPR = 0x80;	/*Setup CLKPCE to be receptive*/
 	CLKPR = 0x00; //no divisor
 }
 
+/*
 static void setup_timers()
 {
 	TCCR1A = 0x00;
@@ -30,17 +34,17 @@ static void setup_timers()
 	TIMSK1 = 0x00 | _BV(OCIE1A); //TIMER1_COMPA_vect
 	OCR1A = 333; //333.33333333333 we will have to make up for this
 }
-
-uint8_t clockSkew = 0;
-
+*/
 uint8_t samples = 0;
 
+/*
+uint8_t clockSkew = 0;
 ISR(TIMER1_COMPA_vect) 
 {
 	PORTD ^= _BV(PD6);
 
-	/* Send the data here. We can interleave other instructions while
-		we wait for sending to complete */
+	// Send the data here. We can interleave other instructions while
+	//	we wait for sending to complete
 
 	//send left MSB
 	SPDR = ((int8_t*)&left)[1];
@@ -73,6 +77,93 @@ ISR(TIMER1_COMPA_vect)
 	}
 
 }
+*/
+ISR(PCINT1_vect)
+{
+	PORTD ^= _BV(PD6);
+
+	if ((PINC & _BV(PC6)) == 0)
+		SendChannelData();
+
+/*
+	if (PINC & _BV(PC6))
+	{
+		SendLeftChannel();
+	}
+	else
+	{
+		SendRightChannel();
+	}
+*/
+}
+
+void SendChannelData()
+{
+	//send left MSB
+	SPDR = ((int8_t*)&left)[1];
+	while(!(SPSR & _BV(SPIF))); //wait for complete
+
+	//send left LSB
+	SPDR = ((int8_t*)&left)[0];
+	while(!(SPSR & _BV(SPIF))); //wait for complete
+
+	//send right MSB
+	SPDR = ((uint8_t*)&right)[1];
+	while(!(SPSR & _BV(SPIF))); //wait for complete
+
+	//send right LSB
+	SPDR = ((uint8_t*)&right)[0];
+	while(!(SPSR & _BV(SPIF))); //wait for complete
+
+	//simple test tones can be made here
+	++samples;
+	if (samples>=17)
+	{
+		left ^= 0x8000;
+		right+=1000;
+		samples = 0;
+	}
+}
+
+void SendLeftChannel()
+{
+	//send left MSB
+	SPDR = ((int8_t*)&left)[1];
+	while(!(SPSR & _BV(SPIF))); //wait for complete
+
+	//send left LSB
+	SPDR = ((int8_t*)&left)[0];
+	while(!(SPSR & _BV(SPIF))); //wait for complete
+}
+
+void SendRightChannel()
+{
+	//send right MSB
+	SPDR = ((uint8_t*)&right)[1];
+	while(!(SPSR & _BV(SPIF))); //wait for complete
+
+	//send right LSB
+	SPDR = ((uint8_t*)&right)[0];
+	while(!(SPSR & _BV(SPIF))); //wait for complete
+
+	//simple test tones can be made here
+	++samples;
+	if (samples>=17)
+	{
+		left ^= 0x8000;
+		right+=1000;
+		samples = 0;
+	}
+}
+
+void setup_lr_interrupt()
+{
+	PCIFR |= _BV(PCIF1);
+	PCICR = _BV(PCIE1);
+	PCMSK1 = _BV(PCINT8);
+	PCIFR |= _BV(PCIF1);
+}
+
 
 void SPI_MasterInit(void)
 {
@@ -93,10 +184,13 @@ int main( void )
 
 	setup_clock();
 
+DDRC = 0x0;
+
 SPI_MasterInit();
 
-	_delay_ms(10); //wait for tiny 44 to be ready for data
-	setup_timers();
+//	_delay_ms(10); //wait for tiny 44 to be ready for data
+	setup_lr_interrupt();
+//	setup_timers();
 
 	//Don't touch any PORTB below 4, those are for printf
 //	SetupPrintf();
