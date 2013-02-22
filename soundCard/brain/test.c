@@ -82,10 +82,6 @@ ISR(PCINT1_vect)
 {
 	PORTD ^= _BV(PD6);
 
-	if ((PINC & _BV(PC6)) == 0)
-		SendChannelData();
-
-/*
 	if (PINC & _BV(PC6))
 	{
 		SendLeftChannel();
@@ -94,7 +90,13 @@ ISR(PCINT1_vect)
 	{
 		SendRightChannel();
 	}
-*/
+}
+
+ISR(INT4_vect)
+{
+	PORTD ^= _BV(PD6);
+
+	SendChannelData();
 }
 
 void SendChannelData()
@@ -120,7 +122,7 @@ void SendChannelData()
 	if (samples>=17)
 	{
 		left ^= 0x8000;
-		right+=1000;
+		right^=0x6000;
 		samples = 0;
 	}
 }
@@ -158,10 +160,21 @@ void SendRightChannel()
 
 void setup_lr_interrupt()
 {
+/*
 	PCIFR |= _BV(PCIF1);
 	PCICR = _BV(PCIE1);
 	PCMSK1 = _BV(PCINT8);
 	PCIFR |= _BV(PCIF1);
+*/
+
+	//setup interrupt on rising edge.
+	//Rising edge indicates right channel processing by attiny
+	//Since we send the left channel over SPI first
+	//there is no danger of writing over the buffer being sent to the DAC
+	//SPI should always be one channel ahead of the DAC
+
+	EICRB = _BV(ISC41) | _BV(ISC40); //rising edge
+	EIMSK = _BV(INT4);
 }
 
 

@@ -91,6 +91,10 @@ WriteSample_asm:
 
 .WRITELOOP:
 
+.WAIT_FOR_LEFT:
+	sbic PINA,7
+	rjmp .WAIT_FOR_LEFT
+
 cli
 	//left channel first
 	//uint8_t hbyte = lr_samples[0]; //high byte
@@ -99,10 +103,6 @@ cli
 	//uint8_t lbyte = lr_samples[1]; //low byte
 	lds REG_LOWBYTE,lr_samples+1
 sei
-
-.WAIT_FOR_LEFT:
-	sbic PINA,7
-	rjmp .WAIT_FOR_LEFT
 
 	cbi PORTA,2 //sclock down
 	sbi PORTA,2 //sclk up
@@ -193,6 +193,11 @@ sei
 	sbic 57-32,7
 	rcall ErrorBlink
 
+	//wait for right
+.WAIT_FOR_RIGHT:
+	sbis PINA,7
+	rjmp .WAIT_FOR_RIGHT
+
 cli
 	//right channel
 	//uint8_t hbyte = lr_samples[0]; //high byte
@@ -202,10 +207,8 @@ cli
 	lds REG_LOWBYTE,lr_samples+3
 sei
 
-	//wait for right
-.WAIT_FOR_RIGHT:
-	sbis PINA,7
-	rjmp .WAIT_FOR_RIGHT
+	cbi PORTA,2 //sclock down
+	sbi PORTA,2 //sclk up
 
 	//do high byte
 	out PORTA,REG_ZERO		//sclk down, 0 data
