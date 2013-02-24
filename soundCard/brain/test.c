@@ -10,8 +10,36 @@
 
 #include "SPIPrinting.h"
 
-#define BUFFERLEN 32
-//uint8_t sendbuffer[BUFFERLEN];
+#define BUFFERLEN 256
+volatile uint8_t buffer[BUFFERLEN];
+volatile uint8_t* volatile readPtr = 0x00;
+volatile uint8_t* volatile bufferEnd = buffer + BUFFERLEN;
+
+uint8_t* writePtr = 0x00; //not used from interrupt
+
+void movePtr(uint8_t** ptr, int i)
+{
+	uint8_t* p = *ptr + i;
+
+	if (p >= bufferEnd)
+	{
+		i =  p - bufferEnd;
+		p = (uint8_t*)(buffer + i);
+	}
+
+	*ptr = p;
+}
+
+//Check to see if writing is possible. If it is, return a pointer to the next
+//position to write to after this current write, 0 if can't write
+inline uint8_t* canWrite(uint8_t* ptr, uint8_t x)
+{
+	movePtr(&ptr,x);
+	if (ptr<readPtr) return ptr;
+	return 0x0000;
+}
+
+
 
 volatile int16_t mono = 0xffff;
 volatile int16_t left = 0xffff;
@@ -45,22 +73,28 @@ ISR(INT4_vect)
 
 static inline void SendChannelData()
 {
+	uint8_t* b = (uint8_t*)readPtr;
+
 	//send left MSB
-	SPDR = ((int8_t*)&left)[1];
+	SPDR = b[1];
 	while(!(SPSR & _BV(SPIF))); //wait for complete
 
 	//send left LSB
-	SPDR = ((int8_t*)&left)[0];
+	SPDR = b[0];
 	while(!(SPSR & _BV(SPIF))); //wait for complete
 
 	//send right MSB
-	SPDR = ((uint8_t*)&right)[1];
+	SPDR = b[3];
 	while(!(SPSR & _BV(SPIF))); //wait for complete
 
 	//send right LSB
-	SPDR = ((uint8_t*)&right)[0];
+	SPDR = b[2];
 	while(!(SPSR & _BV(SPIF))); //wait for complete
 
+	movePtr(&b,4);
+	readPtr = b;
+
+/*
 	//simple test tones can be made here
 	samples+=10;
 	if (samples>92)
@@ -69,6 +103,7 @@ static inline void SendChannelData()
 		right+=2;
 		samples = 0;
 	}
+*/
 }
 
 void setup_lr_interrupt()
@@ -99,43 +134,48 @@ int main( void )
 {
 	cli();
 
-//	memset(sendbuffer,0,BUFFERLEN);
+	readPtr = buffer;
+	writePtr = (uint8_t* volatile)buffer;
+	memset((void*)buffer,0,BUFFERLEN);
 
 	setup_clock();
-
-DDRC = 0x0;
-
-SPI_MasterInit();
-
-//	_delay_ms(10); //wait for tiny 44 to be ready for data
-	setup_lr_interrupt();
-//	setup_timers();
 
 	//Don't touch any PORTB below 4, those are for printf
 //	SetupPrintf();
 
-//	USB_ZeroPrescaler();
-//	USB_Init();
+	USB_ZeroPrescaler();
+	USB_Init();
+
+	DDRC = 0x0;
+
+	SPI_MasterInit();
+
+//	_delay_ms(10); //wait for tiny 44 to be ready for data
+//	setup_timers();
+
+	setup_lr_interrupt();
 
 	DDRD |= _BV(PD6);
-//	PORTD |= _BV(PD6);
 
 	sei();
 
-	while(1);
-/*
-	uint16_t i = 0;
+int r = 0;
+uint8_t* p = 0x0000;
+
 	while(1)
 	{
-		if (i >= 710)
+		p = canWrite(writePtr,64);
+		if ( p > 0 )
 		{
-			left ^= 0x8000;
-			right+=1000;
-			i = 0;
+			r = UsbRead_Blocking(0x04, writePtr, 64);
+			writePtr = p;
 		}
-		++i;
+
+//		for (i =0; i<r; i+=2)
+//			printf("%02X%02X ", b[i], b[i+1]);
+//		printf("\n");
 	}
-*/
+
 	return 0;
 }
 
