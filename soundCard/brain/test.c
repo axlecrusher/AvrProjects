@@ -10,12 +10,16 @@
 
 #include "SPIPrinting.h"
 
+#define DATAGRAM_SIZE 64
+
 #define BUFFERLEN 256
 volatile uint8_t buffer[BUFFERLEN];
 volatile uint8_t* volatile readPtr = 0x00;
 volatile uint8_t* volatile bufferEnd = buffer + BUFFERLEN;
 
-uint8_t* writePtr = 0x00; //not used from interrupt
+volatile int8_t usbIndex = -1;
+
+volatile uint8_t* volatile writePtr = 0x00; //not used from interrupt
 
 void movePtr(uint8_t** ptr, int i)
 {
@@ -39,6 +43,17 @@ inline uint8_t* canWrite(uint8_t* ptr, uint8_t x)
 	return 0x0000;
 }
 
+inline void ReadUSBByte()
+{
+	if (usbIndex>=0)
+	{
+		if ( USB_HAS_SPACE(UEINTX) )
+		{
+			writePtr[usbIndex] = UEDATX;
+			usbIndex++;
+		}
+	}
+}
 
 
 volatile int16_t mono = 0xffff;
@@ -159,21 +174,31 @@ int main( void )
 
 	sei();
 
-int r = 0;
 uint8_t* p = 0x0000;
+uint8_t i;
+
+			UENUM = 4; //interrupts can change this
 
 	while(1)
 	{
-		p = canWrite(writePtr,64);
+		p = canWrite(writePtr,DATAGRAM_SIZE);
 		if ( p > 0 )
 		{
-			r = UsbRead_Blocking(0x04, writePtr, 64);
+
+			if (!USB_READY(UEINTX)) continue;
+			
+//need to be able to process USB while processing SPI
+cli();
+			UEINTX &= ~_BV(RXOUTI); //what?
+
+			for( i = 0; i < DATAGRAM_SIZE; i++ )
+				writePtr[i] = UEDATX;
+
+			UEINTX &= ~_BV(FIFOCON);
+sei();
+
 			writePtr = p;
 		}
-
-//		for (i =0; i<r; i+=2)
-//			printf("%02X%02X ", b[i], b[i+1]);
-//		printf("\n");
 	}
 
 	return 0;
