@@ -17,9 +17,6 @@ volatile int16_t mono = 0xffff;
 volatile int16_t left = 0xffff;
 volatile int16_t right = 0xffff;
 
-void SendLeftChannel();
-void SendRightChannel();
-
 static void setup_clock()
 {
 	CLKPR = 0x80;	/*Setup CLKPCE to be receptive*/
@@ -37,60 +34,7 @@ static void setup_timers()
 */
 uint8_t samples = 0;
 
-/*
-uint8_t clockSkew = 0;
-ISR(TIMER1_COMPA_vect) 
-{
-	PORTD ^= _BV(PD6);
-
-	// Send the data here. We can interleave other instructions while
-	//	we wait for sending to complete
-
-	//send left MSB
-	SPDR = ((int8_t*)&left)[1];
-	OCR1AL = 77; //low byte of 333
-	while(!(SPSR & _BV(SPIF))); //wait for complete
-
-	//send left LSB
-	SPDR = ((int8_t*)&left)[0];
-	++clockSkew;
-	while(!(SPSR & _BV(SPIF))); //wait for complete
-
-	//send right MSB
-	SPDR = ((uint8_t*)&right)[1];
-	if (clockSkew>=3) OCR1AL = 78; //low byte of 334, make up for 333.333
-	while(!(SPSR & _BV(SPIF))); //wait for complete
-
-	//send right LSB
-	SPDR = ((uint8_t*)&right)[0];
-	if (clockSkew>=3) clockSkew = 0;
-	while(!(SPSR & _BV(SPIF))); //wait for complete
-
-
-	//simple test tones can be made here
-	++samples;
-	if (samples>=100)
-	{
-		left ^= 0x8000;
-		right+=1000;
-		samples = 0;
-	}
-
-}
-*/
-ISR(PCINT1_vect)
-{
-	PORTD ^= _BV(PD6);
-
-	if (PINC & _BV(PC6))
-	{
-		SendLeftChannel();
-	}
-	else
-	{
-		SendRightChannel();
-	}
-}
+static inline void SendChannelData();
 
 ISR(INT4_vect)
 {
@@ -99,7 +43,7 @@ ISR(INT4_vect)
 	SendChannelData();
 }
 
-void SendChannelData()
+static inline void SendChannelData()
 {
 	//send left MSB
 	SPDR = ((int8_t*)&left)[1];
@@ -118,55 +62,17 @@ void SendChannelData()
 	while(!(SPSR & _BV(SPIF))); //wait for complete
 
 	//simple test tones can be made here
-	++samples;
-	if (samples>=17)
+	samples+=10;
+	if (samples>92)
 	{
 		left ^= 0x8000;
-		right^=0x6000;
-		samples = 0;
-	}
-}
-
-void SendLeftChannel()
-{
-	//send left MSB
-	SPDR = ((int8_t*)&left)[1];
-	while(!(SPSR & _BV(SPIF))); //wait for complete
-
-	//send left LSB
-	SPDR = ((int8_t*)&left)[0];
-	while(!(SPSR & _BV(SPIF))); //wait for complete
-}
-
-void SendRightChannel()
-{
-	//send right MSB
-	SPDR = ((uint8_t*)&right)[1];
-	while(!(SPSR & _BV(SPIF))); //wait for complete
-
-	//send right LSB
-	SPDR = ((uint8_t*)&right)[0];
-	while(!(SPSR & _BV(SPIF))); //wait for complete
-
-	//simple test tones can be made here
-	++samples;
-	if (samples>=17)
-	{
-		left ^= 0x8000;
-		right+=1000;
+		right+=2;
 		samples = 0;
 	}
 }
 
 void setup_lr_interrupt()
 {
-/*
-	PCIFR |= _BV(PCIF1);
-	PCICR = _BV(PCIE1);
-	PCMSK1 = _BV(PCINT8);
-	PCIFR |= _BV(PCIF1);
-*/
-
 	//setup interrupt on rising edge.
 	//Rising edge indicates right channel processing by attiny
 	//Since we send the left channel over SPI first
