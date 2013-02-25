@@ -147,7 +147,7 @@ static inline void SendChannelDataFromUSB()
 		}
 
 		//send left MSB
-		SPDR = UEDATX;
+		SPDR = UEDATX; //17 clock cycles for this to send
 		while(!(SPSR & _BV(SPIF))); //wait for complete
 
 		//send left LSB
