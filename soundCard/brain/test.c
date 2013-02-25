@@ -198,8 +198,9 @@ void SPI_MasterInit(void)
 {
 	/* Set MOSI and SCK output, all others input */
 	DDRB = (1<<PB2)|(1<<PB1) | _BV(PB0);
-	/* Enable SPI, Master, set clock rate fck/4 */
+	/* Enable SPI, Master, set clock rate fck/2 */
 	SPCR = (1<<SPE)|(1<<MSTR);
+	SPSR = _BV(SPI2X);
 
 	//drive SS high
 //	PORTB |= _BV(PB0);
