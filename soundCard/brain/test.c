@@ -78,12 +78,14 @@ static void setup_timers()
 uint8_t samples = 0;
 
 static inline void SendChannelData();
+static inline void SendChannelDataFromUSB();
 
 ISR(INT4_vect)
 {
-	PORTD ^= _BV(PD6);
+//	PORTD ^= _BV(PD6);
 
-	SendChannelData();
+//	SendChannelData();
+	SendChannelDataFromUSB();
 }
 
 static inline void SendChannelData()
@@ -108,6 +110,64 @@ static inline void SendChannelData()
 
 	movePtr(&b,4);
 	readPtr = b;
+
+/*
+	//simple test tones can be made here
+	samples+=10;
+	if (samples>92)
+	{
+		left ^= 0x8000;
+		right+=2;
+		samples = 0;
+	}
+*/
+}
+
+volatile uint8_t bytesRead = 0;
+
+static inline void SendChannelDataFromUSB()
+{
+//	uint8_t usb = UENUM;
+	UENUM = 4; //interrupts can change this
+	if ( USB_READY(UEINTX) )
+	{
+		PORTD &= ~_BV(PD6);
+
+		UEINTX &= ~_BV(RXOUTI); //ack
+
+		//normally we would do this last but we want to allow as muhc time as
+		//possible for the USB to respond
+		//it would be even better to decouple this from the ISP
+		bytesRead += 4;
+		if (bytesRead >= DATAGRAM_SIZE)
+		{
+//			PORTD |= _BV(PD6);
+			UEINTX &= ~_BV(FIFOCON);
+			bytesRead = 0;
+		}
+
+		//send left MSB
+		SPDR = UEDATX;
+		while(!(SPSR & _BV(SPIF))); //wait for complete
+
+		//send left LSB
+		SPDR = UEDATX;
+		while(!(SPSR & _BV(SPIF))); //wait for complete
+
+		//send right MSB
+		SPDR = UEDATX;
+		while(!(SPSR & _BV(SPIF))); //wait for complete
+
+		//send right LSB
+		SPDR = UEDATX;
+		while(!(SPSR & _BV(SPIF))); //wait for complete
+	}
+	else
+	{
+		PORTD |= _BV(PD6);
+	}
+
+//	UENUM = usb;
 
 /*
 	//simple test tones can be made here
@@ -181,6 +241,7 @@ uint8_t i;
 
 	while(1)
 	{
+/*
 		p = canWrite(writePtr,DATAGRAM_SIZE);
 		if ( p > 0 )
 		{
@@ -199,6 +260,7 @@ sei();
 
 			writePtr = p;
 		}
+*/
 	}
 
 	return 0;
