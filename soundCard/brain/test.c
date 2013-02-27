@@ -16,10 +16,13 @@
 volatile uint8_t buffer[BUFFERLEN];
 volatile uint8_t* volatile readPtr = 0x00;
 volatile uint8_t* volatile bufferEnd = buffer + BUFFERLEN;
+volatile uint8_t samplesBuffered = 0;
 
 volatile int8_t usbIndex = -1;
 
 volatile uint8_t* volatile writePtr = 0x00; //not used from interrupt
+
+#define BUFFER_HAS_ROOM(x) (((BUFFERLEN/4)-samplesBuffered) >= x)
 
 void movePtr(uint8_t** ptr, int i)
 {
@@ -34,6 +37,19 @@ void movePtr(uint8_t** ptr, int i)
 	*ptr = p;
 }
 
+void setPtr(uint8_t** ptr)
+{
+	uint8_t i = 0;
+	uint8_t* p = *ptr;
+
+	if (p >= bufferEnd)
+	{
+		i =  p - bufferEnd;
+		p = (uint8_t*)(buffer + i);
+		*ptr = p;		
+	}
+}
+
 //Check to see if writing is possible. If it is, return a pointer to the next
 //position to write to after this current write, 0 if can't write
 inline uint8_t* canWrite(uint8_t* ptr, uint8_t x)
@@ -42,6 +58,14 @@ inline uint8_t* canWrite(uint8_t* ptr, uint8_t x)
 	if (ptr<readPtr) return ptr;
 	return 0x0000;
 }
+
+void SetupBuffer()
+{
+	memset((void*)buffer,0,BUFFERLEN);
+	readPtr = writePtr = buffer;
+	samplesBuffered = 0;
+}
+
 
 inline void ReadUSBByte()
 {
@@ -125,60 +149,74 @@ static inline void SendChannelData()
 
 volatile uint8_t bytesRead = 0;
 
+void testAssembly()
+{
+	uint8_t x = 0;
+	uint8_t i = 0;
+	do
+	{
+		UENUM++;
+		i++;
+	}
+	while (i<4);
+}
+
 static inline void SendChannelDataFromUSB()
 {
-//	uint8_t usb = UENUM;
-	UENUM = 4; //interrupts can change this
-	if ( USB_READY(UEINTX) )
-	{
-		PORTD &= ~_BV(PD6);
+	//always read or write in multiples of BUFFERLEN
+	uint8_t* wb = (uint8_t*)writePtr;
+	uint8_t* rb = (uint8_t*)readPtr;
+	uint8_t i = 0;
 
+	PORTD &= ~_BV(PD6);
+
+	UENUM = 4; //interrupts can change this
+
+	if ( USB_READY(UEINTX) && BUFFER_HAS_ROOM(DATAGRAM_SIZE) )
+	{
 		UEINTX &= ~_BV(RXOUTI); //ack
 
-		//normally we would do this last but we want to allow as muhc time as
-		//possible for the USB to respond
-		//it would be even better to decouple this from the ISP
-		bytesRead += 4;
-		if (bytesRead >= DATAGRAM_SIZE)
+		//L_MSB, L_LSB, R_MSB, R_LSB
+		for (i=0;i<4;++i)
 		{
-//			PORTD |= _BV(PD6);
-			UEINTX &= ~_BV(FIFOCON);
-			bytesRead = 0;
+			SPDR = *rb; //17 clock cycles for this to send
+			rb++;
+			*(wb++) = UEDATX; //4
+			*(wb++) = UEDATX; //4
+			*(wb++) = UEDATX; //4
+			*(wb++) = UEDATX; //4
+			while(!(SPSR & _BV(SPIF))); //wait for complete
 		}
 
-		//send left MSB
-		SPDR = UEDATX; //17 clock cycles for this to send
-		while(!(SPSR & _BV(SPIF))); //wait for complete
+		for (i=0;i<48;++i)
+		{
+			*wb = UEDATX; wb++;
+		}
 
-		//send left LSB
-		SPDR = UEDATX;
-		while(!(SPSR & _BV(SPIF))); //wait for complete
+		UEINTX &= ~_BV(FIFOCON);
 
-		//send right MSB
-		SPDR = UEDATX;
-		while(!(SPSR & _BV(SPIF))); //wait for complete
+		setPtr(&wb); //circle the buffer around if needed
+		writePtr = wb;
+		samplesBuffered += 15; //buffered 16 samples but played 1
+	}
+	else if (samplesBuffered >= 1)
+	{
+		for (i=0;i<4;++i)
+		{
+			SPDR = *rb; //17 clock cycles for this to send
+			rb++;
+			while(!(SPSR & _BV(SPIF))); //wait for complete
+		}
 
-		//send right LSB
-		SPDR = UEDATX;
-		while(!(SPSR & _BV(SPIF))); //wait for complete
+		samplesBuffered--;
 	}
 	else
 	{
 		PORTD |= _BV(PD6);
 	}
 
-//	UENUM = usb;
-
-/*
-	//simple test tones can be made here
-	samples+=10;
-	if (samples>92)
-	{
-		left ^= 0x8000;
-		right+=2;
-		samples = 0;
-	}
-*/
+	setPtr(&rb); //circle the buffer around if needed
+	readPtr = rb;
 }
 
 void setup_lr_interrupt()
@@ -190,6 +228,7 @@ void setup_lr_interrupt()
 	//SPI should always be one channel ahead of the DAC
 
 	EICRB = _BV(ISC41) | _BV(ISC40); //rising edge
+	EIFR |= _BV(INTF4); //clear interrupt flag
 	EIMSK = _BV(INT4);
 }
 
@@ -210,9 +249,7 @@ int main( void )
 {
 	cli();
 
-	readPtr = buffer;
-	writePtr = (uint8_t* volatile)buffer;
-	memset((void*)buffer,0,BUFFERLEN);
+	SetupBuffer();
 
 	setup_clock();
 
@@ -226,7 +263,7 @@ int main( void )
 
 	SPI_MasterInit();
 
-//	_delay_ms(10); //wait for tiny 44 to be ready for data
+	_delay_ms(10); //wait for tiny 44 to be ready for data
 //	setup_timers();
 
 	setup_lr_interrupt();
@@ -235,10 +272,7 @@ int main( void )
 
 	sei();
 
-uint8_t* p = 0x0000;
-uint8_t i;
-
-			UENUM = 4; //interrupts can change this
+	UENUM = 4; //interrupts can change this
 
 	while(1)
 	{

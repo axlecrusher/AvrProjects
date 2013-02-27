@@ -5,8 +5,8 @@ PART = atmega8u2
 PROGPART = m8u2
 CFLAGS = -Wall -Os -mmcu=$(PART) -DF_CPU=16000000UL -D NO_PRINTF
 
-OBJS = test.o usb.o SPIPrinting.o# avrUsbUtils.o
-SRCS = test.c usb.c SPIPrinting.c# avrUsbUtils.c
+OBJS = test.o usb.o SPIPrinting.o buffer.o# avrUsbUtils.o
+SRCS = test.c usb.c SPIPrinting.c buffer.S# avrUsbUtils.c
 
 program.elf : $(OBJS)
 	avr-gcc -I  $(CFLAGS) -Wl,-Map,program.map -o $@ $^ -L/usr/lib/binutils/avr/2.18
