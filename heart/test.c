@@ -20,6 +20,11 @@ static const uint8_t PORTA_map[] = {0x80,0x02,0x04,0x80,0x08,0x04,0x80,0x20,0x20
 void (*DoFrame)(void) = NULL;
 void (*DrawFunc)(void) = NULL;
 
+ISR(INT0_vect)
+{
+	GIMSK = 0;
+}
+
 ISR( TIM1_COMPA_vect )
 {
 	DoFrame();
@@ -44,11 +49,12 @@ static void setup_clock( void )
 
 void setup_pins()
 {
-	DDRA = 0;
+	DDRA = 0x3F; //set output pins, 24
 	DDRB = 0;
-PORTA = 0;
-PORTB = 0;
-	DDRA = 0x2F; //set output pins
+
+	PORTA = 0;
+	PORTB = 0;
+
 //	PORTA = (1<<SCLK); //up
 
 //	DDRB =  (1<<MCLK);
@@ -123,6 +129,8 @@ int main( void )
 {
 	cli();
 	setup_clock();
+
+	DIDR0 = 0xFF; //disable digital input
 
 	setup_pins();
 	timer_init();
