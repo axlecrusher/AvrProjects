@@ -19,10 +19,12 @@ static const uint8_t PORTA_map[] = {0x80,0x02,0x04,0x80,0x08,0x04,0x80,0x20,0x20
 
 void (*DoFrame)(void) = NULL;
 void (*DrawFunc)(void) = NULL;
+uint8_t power_down = 0x00;
 
 ISR(INT0_vect)
 {
 	GIMSK = 0;
+	sleep_disable();
 }
 
 ISR( TIM1_COMPA_vect )
@@ -50,10 +52,11 @@ static void setup_clock( void )
 void setup_pins()
 {
 	DDRA = 0x3F; //set output pins, 24
-	DDRB = 0;
+	DDRB = _BV(PB2);
 
 	PORTA = 0;
-	PORTB = 0;
+	PORTB = _BV(PB2);
+
 
 //	PORTA = (1<<SCLK); //up
 
@@ -158,6 +161,7 @@ int main( void )
 
 	while (1)
 	{
+		if (power_down) PowerDown();
 		DrawFunc();
 	}
 
