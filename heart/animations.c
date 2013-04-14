@@ -12,7 +12,7 @@ uint8_t* frame = 0x00;
 
 extern void (*DoFrame)(void);
 extern void (*DrawFunc)(void);
-extern uint8_t power_down;
+extern uint8_t done_animation;
 
 uint8_t LightLED(uint8_t i);
 
@@ -39,10 +39,6 @@ uint8_t FillHeartFrames[] PROGMEM = {
 0xFF //stop
 };
 
-void PowerDown();
-
-volatile uint8_t offset = 0;
-
 volatile uint8_t iBegin = 0; //index of first LED code
 volatile uint8_t iEnd = 0; //index of last LED code
 
@@ -57,7 +53,7 @@ void NextSequence()
 	void (*f)(void) = pgm_read_word(AnimationSequence+iSequence);
 	if (f == 0x0000)
 	{
-		power_down=0xFF;
+		done_animation=0xFF;
 		iSequence = 0;
 		f = pgm_read_word(AnimationSequence);
 	}
@@ -149,42 +145,6 @@ void ShowFrame()
 //		if (current_frame[i] < GRID_ARRAY_LENGTH)
 			LightLED(pgm_read_byte(f+i));
 	}
-}
-
-void PowerDown()
-{
-	cli();
-
-	GIMSK = _BV(INT0);
-	PRR = _BV(PRTIM1) | _BV(PRTIM0) | _BV(PRUSI) | _BV(PRADC); //turn things off
-
-	set_sleep_mode(SLEEP_MODE_IDLE);
-	sleep_enable();
-	sleep_bod_disable();
-	sei();
-	sleep_cpu();
-	sleep_disable();
-
-	GIMSK = 0;
-	PRR = 0x00;
-
-/*
-cli();
-	GIMSK = _BV(INT0);
-
-	PRR = _BV(PRTIM1) | _BV(PRTIM0) | _BV(PRUSI) | _BV(PRADC); //turn things off
-	MCUCR = 0x84; //BODS, BODSE
-	MCUCR = 0xB0; //BODS, SE, SM1
-sei();
-	sleep_cpu();
-	sleep_disable();
-
-	MCUCR = 0x00;
-	GIMSK = 0;
-
-	PRR = 0x00;
-*/
-	power_down = 0x00;
 }
 
 /*

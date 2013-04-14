@@ -19,7 +19,9 @@ static const uint8_t PORTA_map[] PROGMEM = {0x80,0x02,0x04,0x80,0x08,0x04,0x80,0
 
 void (*DoFrame)(void) = NULL;
 void (*DrawFunc)(void) = NULL;
-uint8_t power_down = 0x00;
+volatile uint8_t done_animation = 0x00;
+
+void PowerDown();
 
 ISR(INT0_vect)
 {
@@ -52,10 +54,27 @@ static void setup_clock( void )
 void setup_pins()
 {
 	DDRA = 0x3F; //set output pins, 24
-	DDRB = _BV(PB2);
-
 	PORTA = 0;
-	PORTB = _BV(PB2);
+
+	//PB2 output high
+//	DDRB = _BV(PB2);
+//	PORTB = _BV(PB2);
+
+	//disable ADC
+	ADCSRA = 0;
+	ADCSRB = 0;
+
+	//disable analog comparator
+	ACSR = _BV(ADC);
+
+	//disable brown out detection by fueses
+
+	//disable watchdog
+	WDTCSR = _BV(WDCE) | _BV(WDE);
+	WDTCSR &= ~_BV(WDE);
+
+	//power reduction
+	PRR = _BV(PRTIM0) | _BV(PRUSI) | _BV(PRADC); //turn things off
 
 
 //	PORTA = (1<<SCLK); //up
@@ -161,13 +180,55 @@ int main( void )
 
 	while (1)
 	{
-		if (power_down) PowerDown();
+		if (done_animation)
+		{
+			PowerDown();
+			done_animation = 0x00;
+		}
 		DrawFunc();
 	}
 
 	PORTA = 0x0;
 
 	return 0;
+}
+
+void PowerDown()
+{
+	cli();
+
+//	GIMSK = _BV(INT0);
+
+	MCUCR = 0;
+
+	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+//	set_sleep_mode(SLEEP_MODE_IDLE);
+	sleep_enable();
+	sleep_bod_disable();
+//	GIFR = _BV(INTF0);
+	sei();
+	sleep_cpu();
+	sleep_disable();
+
+	GIMSK = 0;
+	PRR = 0x00;
+
+/*
+cli();
+	GIMSK = _BV(INT0);
+
+	PRR = _BV(PRTIM1) | _BV(PRTIM0) | _BV(PRUSI) | _BV(PRADC); //turn things off
+	MCUCR = 0x84; //BODS, BODSE
+	MCUCR = 0xB0; //BODS, SE, SM1
+sei();
+	sleep_cpu();
+	sleep_disable();
+
+	MCUCR = 0x00;
+	GIMSK = 0;
+
+	PRR = 0x00;
+*/
 }
 
 /*
