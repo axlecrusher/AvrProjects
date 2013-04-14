@@ -158,7 +158,7 @@ void PowerDown()
 	GIMSK = _BV(INT0);
 	PRR = _BV(PRTIM1) | _BV(PRTIM0) | _BV(PRUSI) | _BV(PRADC); //turn things off
 
-	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+	set_sleep_mode(SLEEP_MODE_IDLE);
 	sleep_enable();
 	sleep_bod_disable();
 	sei();
