@@ -13,37 +13,19 @@
 #define DATAGRAM_SIZE 64
 
 #define BUFFERLEN 128
-volatile uint16_t buffer[BUFFERLEN+1];
-volatile uint8_t write = 1;
-volatile uint8_t read = 0;
-volatile uint8_t spaceLeft = 128;
+volatile uint16_t buffer[BUFFERLEN];
+volatile uint8_t write;
+volatile uint8_t read;
+volatile uint8_t spaceLeft;
 
-//Check to see if writing is possible. If it is, return a pointer to the next
-//position to write to after this current write, 0 if can't write
-inline uint8_t* canWrite(uint8_t* ptr, uint8_t x)
-{
-	movePtr(&ptr,x);
-	if (ptr<readPtr) return ptr;
-	return 0x0000;
-}
+volatile uint8_t bytesRead = 0;
 
 void SetupBuffer()
 {
-	memset((void*)buffer,0,BUFFERLEN);
-	spaceLeft = 128;
-}
-
-
-inline void ReadUSBByte()
-{
-	if (usbIndex>=0)
-	{
-		if ( USB_HAS_SPACE(UEINTX) )
-		{
-			writePtr[usbIndex] = UEDATX;
-			usbIndex++;
-		}
-	}
+	int i;
+	for (i=0; i<BUFFERLEN; ++i) buffer[i] = 0;
+	spaceLeft = BUFFERLEN;
+	read = write = 0;
 }
 
 static void setup_clock()
@@ -88,9 +70,56 @@ ISR(INT4_vect)
 	}
 }
 
+inline uint8_t inc(uint8_t a, uint8_t b, uint8_t max)
+{
+	a+=b;
+	if (a>=max) a -= max;
+	return a;
+}
+
 static void ReadUSB_SendChannelData()
 {
+	uint8_t* wb = (uint8_t*)buffer[write];
+	uint8_t* rb = (uint8_t*)buffer[read];
+
+	UEINTX &= ~_BV(RXOUTI); //ack
+
+	//send left MSB
+	SPDR = rb[0]; //17 clock cycles for this to send
+	wb[0] = UEDATX;
+	wb[1] = UEDATX;
+	while(!(SPSR & _BV(SPIF))); //wait for complete
 	
+	//send left LSB
+	SPDR = rb[1]; //17 clock cycles for this to send
+	wb[2] = UEDATX;
+	wb[3] = UEDATX;
+	while(!(SPSR & _BV(SPIF))); //wait for complete
+
+	//send right MSB
+	SPDR = rb[2]; //17 clock cycles for this to send
+	wb[4] = UEDATX;
+	wb[5] = UEDATX;
+	while(!(SPSR & _BV(SPIF))); //wait for complete
+
+	//send right LSB
+	SPDR = rb[3]; //17 clock cycles for this to send
+	wb[6] = UEDATX;
+	wb[7] = UEDATX;
+	while(!(SPSR & _BV(SPIF))); //wait for complete
+
+	//read samples, wrote 4 samples so we have 2 less spaces
+	spaceLeft -= 2;
+
+	read = inc(read, 2, BUFFERLEN);
+	write = inc(write, 4, BUFFERLEN);
+
+	bytesRead += 8;
+	if (bytesRead >= DATAGRAM_SIZE)
+	{
+		UEINTX &= ~_BV(FIFOCON); //reset USB packet
+		bytesRead = 0;
+	}
 }
 
 static inline void SendChannelData()
@@ -114,14 +143,11 @@ static inline void SendChannelData()
 	while(!(SPSR & _BV(SPIF))); //wait for complete
 
 	spaceLeft+=2;
-	read += 2;
+	read = inc(read, 2, BUFFERLEN);
 }
-
-volatile uint8_t bytesRead = 0;
 
 void testAssembly()
 {
-	uint8_t x = 0;
 	uint8_t i = 0;
 	do
 	{
@@ -129,64 +155,6 @@ void testAssembly()
 		i++;
 	}
 	while (i<4);
-}
-
-static inline void SendChannelDataFromUSB()
-{
-	//always read or write in multiples of BUFFERLEN
-	uint8_t* wb = (uint8_t*)writePtr;
-	uint8_t* rb = (uint8_t*)readPtr;
-	uint8_t i = 0;
-
-	PORTD &= ~_BV(PD6);
-
-	UENUM = 4; //interrupts can change this
-
-	if ( USB_READY(UEINTX) && spaceLeft >= 8 )
-	{
-		UEINTX &= ~_BV(RXOUTI); //ack
-
-		//L_MSB, L_LSB, R_MSB, R_LSB
-		for (i=0;i<4;++i)
-		{
-			SPDR = *rb; //17 clock cycles for this to send
-			rb++;
-			*(wb++) = UEDATX; //4
-			*(wb++) = UEDATX; //4
-			*(wb++) = UEDATX; //4
-			*(wb++) = UEDATX; //4
-			while(!(SPSR & _BV(SPIF))); //wait for complete
-		}
-
-		for (i=0;i<48;++i)
-		{
-			*wb = UEDATX; wb++;
-		}
-
-		UEINTX &= ~_BV(FIFOCON);
-
-		setPtr(&wb); //circle the buffer around if needed
-		writePtr = wb;
-		samplesBuffered += 15; //buffered 16 samples but played 1
-	}
-	else if (samplesBuffered >= 1)
-	{
-		for (i=0;i<4;++i)
-		{
-			SPDR = *rb; //17 clock cycles for this to send
-			rb++;
-			while(!(SPSR & _BV(SPIF))); //wait for complete
-		}
-
-		samplesBuffered--;
-	}
-	else
-	{
-		PORTD |= _BV(PD6);
-	}
-
-	setPtr(&rb); //circle the buffer around if needed
-	readPtr = rb;
 }
 
 void setup_lr_interrupt()
