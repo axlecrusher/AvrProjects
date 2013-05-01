@@ -12,53 +12,9 @@
 
 #define DATAGRAM_SIZE 64
 
-#define BUFFERLEN 256
-volatile uint8_t buffer[BUFFERLEN];
-volatile uint8_t* volatile readPtr = 0x00;
-volatile uint8_t* volatile bufferEnd = buffer + BUFFERLEN;
+#include "buffer.h"
 
-volatile int8_t usbIndex = -1;
-
-volatile uint8_t* volatile writePtr = 0x00; //not used from interrupt
-
-void movePtr(uint8_t** ptr, int i)
-{
-	uint8_t* p = *ptr + i;
-
-	if (p >= bufferEnd)
-	{
-		i =  p - bufferEnd;
-		p = (uint8_t*)(buffer + i);
-	}
-
-	*ptr = p;
-}
-
-//Check to see if writing is possible. If it is, return a pointer to the next
-//position to write to after this current write, 0 if can't write
-inline uint8_t* canWrite(uint8_t* ptr, uint8_t x)
-{
-	movePtr(&ptr,x);
-	if (ptr<readPtr) return ptr;
-	return 0x0000;
-}
-
-inline void ReadUSBByte()
-{
-	if (usbIndex>=0)
-	{
-		if ( USB_HAS_SPACE(UEINTX) )
-		{
-			writePtr[usbIndex] = UEDATX;
-			usbIndex++;
-		}
-	}
-}
-
-
-volatile int16_t mono = 0xffff;
-volatile int16_t left = 0xffff;
-volatile int16_t right = 0xffff;
+struct CircleBuffer ab;
 
 static void setup_clock()
 {
@@ -76,54 +32,112 @@ static void setup_timers()
 }
 */
 uint8_t samples = 0;
+uint8_t bytesRead = 0;
 
 static inline void SendChannelData();
 static inline void SendChannelDataFromUSB();
+static void ReadUSB_SendChannelData();
+static void DoAudio();
 
 ISR(INT4_vect)
 {
 //	PORTD ^= _BV(PD6);
 
 //	SendChannelData();
-	SendChannelDataFromUSB();
+//	SendChannelDataFromUSB();
+	DoAudio();
+}
+
+static void DoAudio()
+{
+	UENUM = 4; //USB endpoint
+
+	if ( USB_READY(UEINTX) && (BytesFree(&ab) >= 8) )
+	{
+		PORTD &= ~_BV(PD6); //LED off
+		ReadUSB_SendChannelData();
+	}
+	else if ( BytesUsed(&ab) >= 2)
+	{
+		PORTD &= ~_BV(PD6); //LED off
+		SendChannelData();
+	}
+	else
+	{
+//		underflow
+		PORTD |= _BV(PD6); //LED on
+	}
+}
+
+static void ReadUSB_SendChannelData()
+{
+	char* wb = ab.buffer+ab.head;
+	char* rb = ab.buffer+ab.tail;
+
+	SPDR = *rb; //send left MSB, 17 clock cycles
+	rb++;
+	*wb = UEDATX; wb++;
+	*wb = UEDATX; wb++;
+	while(!(SPSR & _BV(SPIF))); //wait for complete
+	
+	//send left LSB
+	SPDR = *rb; //17 clock cycles for this to send
+	rb++;
+	*wb = UEDATX; wb++;
+	*wb = UEDATX; wb++;
+	while(!(SPSR & _BV(SPIF))); //wait for complete
+
+	//send right MSB
+	SPDR = *rb; //17 clock cycles for this to send
+	rb++;
+	*wb = UEDATX; wb++;
+	*wb = UEDATX; wb++;
+	while(!(SPSR & _BV(SPIF))); //wait for complete
+
+	//send right LSB
+	SPDR = *rb; //17 clock cycles for this to send
+	*wb = UEDATX; wb++;
+	*wb = UEDATX; wb++;
+	while(!(SPSR & _BV(SPIF))); //wait for complete
+
+	MoveBufferHead(&ab, 8);
+	MoveBufferTail(&ab, 4);
+
+	if (bytesRead == 0)
+		UEINTX &= ~_BV(RXOUTI); //ack
+
+	bytesRead += 8;
+	if (bytesRead >= DATAGRAM_SIZE)
+	{
+		UEINTX &= ~_BV(FIFOCON); //reset USB packet
+		bytesRead = 0;
+	}
 }
 
 static inline void SendChannelData()
 {
-	uint8_t* b = (uint8_t*)readPtr;
+	char* rb = ab.buffer+ab.tail;
 
 	//send left MSB
-	SPDR = b[1];
+	SPDR = *rb;
+	rb++;
 	while(!(SPSR & _BV(SPIF))); //wait for complete
 
 	//send left LSB
-	SPDR = b[0];
+	SPDR = *rb;
+	rb++;
 	while(!(SPSR & _BV(SPIF))); //wait for complete
 
 	//send right MSB
-	SPDR = b[3];
+	SPDR = *rb;
+	rb++;
 	while(!(SPSR & _BV(SPIF))); //wait for complete
 
 	//send right LSB
-	SPDR = b[2];
+	SPDR = *rb;
+	MoveBufferTail(&ab, 4);
 	while(!(SPSR & _BV(SPIF))); //wait for complete
-
-	movePtr(&b,4);
-	readPtr = b;
-
-/*
-	//simple test tones can be made here
-	samples+=10;
-	if (samples>92)
-	{
-		left ^= 0x8000;
-		right+=2;
-		samples = 0;
-	}
-*/
 }
-
-volatile uint8_t bytesRead = 0;
 
 static inline void SendChannelDataFromUSB()
 {
@@ -210,11 +224,9 @@ int main( void )
 {
 	cli();
 
-	readPtr = buffer;
-	writePtr = (uint8_t* volatile)buffer;
-	memset((void*)buffer,0,BUFFERLEN);
-
 	setup_clock();
+
+	InitBuffer(&ab);
 
 	//Don't touch any PORTB below 4, those are for printf
 //	SetupPrintf();
