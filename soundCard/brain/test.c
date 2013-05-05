@@ -41,10 +41,6 @@ static void DoAudio();
 
 ISR(INT4_vect)
 {
-//	PORTD ^= _BV(PD6);
-
-//	SendChannelData();
-//	SendChannelDataFromUSB();
 	DoAudio();
 }
 
@@ -71,6 +67,7 @@ static void DoAudio()
 
 static void ReadUSB_SendChannelData()
 {
+/*
 	char* wb = ab.buffer+ab.head;
 	char* rb = ab.buffer+ab.tail;
 
@@ -99,6 +96,8 @@ static void ReadUSB_SendChannelData()
 	*wb = UEDATX; wb++;
 	*wb = UEDATX; wb++;
 	while(!(SPSR & _BV(SPIF))); //wait for complete
+*/
+	ReadUSB_SendChannelData_asm();
 
 	MoveBufferHead(&ab, 8);
 	MoveBufferTail(&ab, 4);
@@ -251,6 +250,9 @@ uint8_t* p = 0x0000;
 uint8_t i;
 
 			UENUM = 4; //interrupts can change this
+
+//	testAsm();
+//	if (testPtr == 'w') PORTD |= _BV(PD6);
 
 	while(1)
 	{
