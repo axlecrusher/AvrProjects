@@ -31,12 +31,12 @@ static void setup_timers()
 	OCR1A = 333; //333.33333333333 we will have to make up for this
 }
 */
-uint8_t samples = 0;
+
 uint8_t bytesRead = 0;
 
 static inline void SendChannelData();
-static inline void SendChannelDataFromUSB();
 static void ReadUSB_SendChannelData();
+void ReadUSB_SendChannelData_asm();
 static void DoAudio();
 
 ISR(INT4_vect)
@@ -115,7 +115,7 @@ static void ReadUSB_SendChannelData()
 
 static inline void SendChannelData()
 {
-	char* rb = ab.buffer+ab.tail;
+	char* rb = (char*)(ab.buffer+ab.tail);
 
 	//send left MSB
 	SPDR = *rb;
@@ -136,62 +136,6 @@ static inline void SendChannelData()
 	SPDR = *rb;
 	MoveBufferTail(&ab, 4);
 	while(!(SPSR & _BV(SPIF))); //wait for complete
-}
-
-static inline void SendChannelDataFromUSB()
-{
-//	uint8_t usb = UENUM;
-	UENUM = 4; //interrupts can change this
-	if ( USB_READY(UEINTX) )
-	{
-		PORTD &= ~_BV(PD6);
-
-		UEINTX &= ~_BV(RXOUTI); //ack
-
-		//normally we would do this last but we want to allow as muhc time as
-		//possible for the USB to respond
-		//it would be even better to decouple this from the ISP
-		bytesRead += 4;
-		if (bytesRead >= DATAGRAM_SIZE)
-		{
-//			PORTD |= _BV(PD6);
-			UEINTX &= ~_BV(FIFOCON);
-			bytesRead = 0;
-		}
-
-		//send left MSB
-		SPDR = UEDATX; //17 clock cycles for this to send
-		while(!(SPSR & _BV(SPIF))); //wait for complete
-
-		//send left LSB
-		SPDR = UEDATX;
-		while(!(SPSR & _BV(SPIF))); //wait for complete
-
-		//send right MSB
-		SPDR = UEDATX;
-		while(!(SPSR & _BV(SPIF))); //wait for complete
-
-		//send right LSB
-		SPDR = UEDATX;
-		while(!(SPSR & _BV(SPIF))); //wait for complete
-	}
-	else
-	{
-		PORTD |= _BV(PD6);
-	}
-
-//	UENUM = usb;
-
-/*
-	//simple test tones can be made here
-	samples+=10;
-	if (samples>92)
-	{
-		left ^= 0x8000;
-		right+=2;
-		samples = 0;
-	}
-*/
 }
 
 void setup_lr_interrupt()
@@ -246,10 +190,7 @@ int main( void )
 
 	sei();
 
-uint8_t* p = 0x0000;
-uint8_t i;
-
-			UENUM = 4; //interrupts can change this
+	UENUM = 4; //interrupts can change this
 
 //	testAsm();
 //	if (testPtr == 'w') PORTD |= _BV(PD6);
