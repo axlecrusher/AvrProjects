@@ -115,14 +115,24 @@ int SendTx(libusb_transfer* tx, int seconds = 0)
 	if (r != 0)
 	{
 		fprintf(stderr, "error submitting transfer %d (%s)\n", r,  libusb_error_name(r));
-		exit(-1);		
+//		exit(-1);
 	}
 
+	return r;
+
+/*
 	struct timeval tv;
 	tv.tv_sec = seconds;
-	tv.tv_usec = 0;
+	tv.tv_usec = 1000;
 
-	return libusb_handle_events_timeout_completed(usbContext, &tv, NULL);
+	r = libusb_handle_events_timeout_completed(usbContext, &tv, NULL);
+
+	if (r!=0 && r != LIBUSB_ERROR_INTERRUPTED)
+	{
+		fprintf(stderr, "error handling events %d (%s)\n", r,  libusb_error_name(r));
+		exit(-1);		
+	}
+	*/
 }
 
 void GetData_Blocking()
@@ -287,10 +297,14 @@ SendAudioData();
 //		SendTx(	MakeBulkTx(0x04 | LIBUSB_ENDPOINT_OUT, 32) );
 
 int r;
+	struct timeval tv;
 	while(1)
 	{
 //		printf("loop\n");
-		if( (r = libusb_handle_events(usbContext)) < 0 )
+	tv.tv_sec = 0;
+	tv.tv_usec = 1000;
+
+		if( (r = libusb_handle_events_timeout_completed(usbContext, &tv, NULL)) < 0 )
 		{
 			fprintf(stderr,"handle events error %d\n", r);
 			if (r != LIBUSB_ERROR_INTERRUPTED) exit(1);
