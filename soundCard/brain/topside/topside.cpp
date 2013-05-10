@@ -11,7 +11,7 @@
 		libusb_device* usbDevice;
 
 FILE* AUDIOFILE = NULL;
-libusb_transfer* t = 0x00;
+//libusb_transfer* t = 0x00;
 
 enum DeviceState
 {
@@ -168,7 +168,7 @@ void GetData_Blocking()
 */
 }
 
-int ReadAudio()
+int ReadAudio(libusb_transfer* t)
 {
 	if (feof(AUDIOFILE))
 	{
@@ -192,21 +192,23 @@ int ReadAudio()
 	return r;
 }
 
-bool SendAudioData()
+bool SendAudioData(libusb_transfer* t)
 {
 	printf("Sending... ");
 	fflush(stdout);
 
 	SendTx(t,10);
+return true;
 }
 
 void HandleBulk(libusb_transfer *tx)
 {
+//libusb_transfer* t
 	switch(tx->status)
 	{
 		case LIBUSB_TRANSFER_COMPLETED:
 //			fprintf(stderr,"Ok\n");
-			ReadAudio();
+			ReadAudio(tx);
 
 //			if (tx->actual_length>1)
 //				OutputData(tx->buffer, tx->actual_length);
@@ -253,7 +255,7 @@ void HandleBulk(libusb_transfer *tx)
 */
 //	t = tx;
 //	SendAudioData();
-	SendTx(t);
+	SendTx(tx);
 }
 
 libusb_transfer* MakeBulkTx(uint8_t endpoint, uint16_t bLen)
@@ -290,10 +292,18 @@ int main()
 
 	AUDIOFILE = fopen("audio.raw", "rb");
 
-	t = MakeBulkTx(0x04 | LIBUSB_ENDPOINT_OUT, DATAGRAM_SIZE);
+	libusb_transfer* t = MakeBulkTx(0x04 | LIBUSB_ENDPOINT_OUT, DATAGRAM_SIZE);
+ReadAudio(t);
+SendAudioData(t);
 
-ReadAudio();
-SendAudioData();
+	t = MakeBulkTx(0x04 | LIBUSB_ENDPOINT_OUT, DATAGRAM_SIZE);
+ReadAudio(t);
+SendAudioData(t);
+
+	t = MakeBulkTx(0x04 | LIBUSB_ENDPOINT_OUT, DATAGRAM_SIZE);
+ReadAudio(t);
+SendAudioData(t);
+
 //		SendTx(	MakeBulkTx(0x04 | LIBUSB_ENDPOINT_OUT, 32) );
 
 int r;
