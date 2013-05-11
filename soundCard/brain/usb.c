@@ -25,7 +25,8 @@ void USB_Init()
         while (!(PLLCSR & (1<<PLOCK)));	// wait for PLL lock
 	USBCON = 1<<USBE; //Unfreeze USB
         UDCON = 0;// enable attach resistor (go on bus)
-        UDIEN = (1<<EORSTE)|(1<<SOFE);
+//        UDIEN = (1<<EORSTE)|(1<<SOFE);
+	UDIEN = (1<<EORSTE); //we only really care about resets, not start of frames
 }
 
 
@@ -33,13 +34,17 @@ void USB_Init()
 // the transmit buffer flushing is triggered by the start of frame
 //
 
-int triggerep = 0;
+//int triggerep = 0;
+
 ISR(USB_GEN_vect)
 {
+	//happens once every 1ms, must be fast
 	uint8_t intbits;
 	intbits = UDINT;
 	UDINT = 0;
+//	PORTD ^= _BV(PD6); //LED on
 	if (intbits & (1<<EORSTI)) {
+		//reset
 		UENUM = 0;
 		UECONX = 1;
 		UECFG0X = EP_TYPE_CONTROL;
@@ -49,8 +54,10 @@ ISR(USB_GEN_vect)
 		USBInitState = 1;
 	}
 
+/*
 	if ((intbits & (1<<SOFI)) && (USBInitState == 2) && triggerep)
 	{
+		//no idea what this is for, i guess testing something
 		//This can push data via interrupt.
 		triggerep--;
 		UENUM = 3;
@@ -67,6 +74,7 @@ ISR(USB_GEN_vect)
 			UEINTX = 0x3A;
 		}
 	}
+*/
 }
 
 
@@ -76,6 +84,7 @@ ISR(USB_GEN_vect)
 //
 ISR(USB_COM_vect)
 {
+	//this interrupt only happens once so who cares how long it takes
 	uint8_t intbits;
 	const uint8_t *list;
 	const uint8_t *cfg;
@@ -92,7 +101,7 @@ ISR(USB_COM_vect)
 	UENUM = 0;
 	intbits = UEINTX;
 
-	SPIPutChar( '*' );	
+//	SPIPutChar( '*' );	
 
 	if (intbits & (1<<RXSTPI)) {
 		bmRequestType = UEDATX;
