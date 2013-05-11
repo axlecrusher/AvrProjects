@@ -37,31 +37,17 @@ uint8_t bytesRead = 0;
 void SendChannelData();
 void ReadUSB_SendChannelData();
 void ReadUSB_SendChannelData_asm();
-static void DoAudioState();
 
 volatile char needAudioFlag = 0;
 char dataState = 0;
 
 ISR(INT4_vect)
 {
+	//signal the main loop that audio data needs to be sent over SPI
+	//let the main loop do all the heavy lifting so that we can avoid
+	//having to push 15 registers onto the stack when running the interrupt
+	//need to get to sending the audio as fast as possible
 	needAudioFlag = 1;
-}
-
-void DoAudioState()
-{
-	char t = (char)dataState;
-	if (t==1)
-	{
-		PORTD &= ~_BV(PD6); //LED off
-		ReadUSB_SendChannelData();
-	}
-	else if (t==2)
-	{
-		PORTD &= ~_BV(PD6); //LED off
-		SendChannelData();
-	}
-	else
-		PORTD |= _BV(PD6); //LED on
 }
 
 void ReadUSB_SendChannelData()
@@ -162,6 +148,23 @@ void SPI_MasterInit(void)
 //	PORTB |= _BV(PB0);
 }
 
+static void DoAudioState()
+{
+	char t = (char)dataState;
+	if (t==1)
+	{
+		PORTD &= ~_BV(PD6); //LED off
+		ReadUSB_SendChannelData();
+	}
+	else if (t==2)
+	{
+		PORTD &= ~_BV(PD6); //LED off
+		SendChannelData();
+	}
+	else
+		PORTD |= _BV(PD6); //LED on
+}
+
 int main( void )
 {
 	cli();
@@ -196,6 +199,8 @@ int main( void )
 	{
 		UENUM = 4; //interrupts can change this
 
+		//these if statements can take a bit of time so run them and save the
+		//result for future use
 		if ( USB_READY(UEINTX) && (BytesFree(&ab) >= 8) )
 			dataState=1;
 		else if ( BytesUsed(&ab) >= 2)
