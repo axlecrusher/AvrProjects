@@ -34,38 +34,37 @@ static void setup_timers()
 
 uint8_t bytesRead = 0;
 
-static inline void SendChannelData();
-static void ReadUSB_SendChannelData();
+void SendChannelData();
+void ReadUSB_SendChannelData();
 void ReadUSB_SendChannelData_asm();
-static void DoAudio();
+static void DoAudioState();
+
+volatile char needAudioFlag = 0;
+char dataState = 0;
 
 ISR(INT4_vect)
 {
-	DoAudio();
+	needAudioFlag = 1;
 }
 
-static void DoAudio()
+void DoAudioState()
 {
-	UENUM = 4; //USB endpoint
-
-	if ( USB_READY(UEINTX) && (BytesFree(&ab) >= 8) )
+	char t = (char)dataState;
+	if (t==1)
 	{
 		PORTD &= ~_BV(PD6); //LED off
 		ReadUSB_SendChannelData();
 	}
-	else if ( BytesUsed(&ab) >= 2)
+	else if (t==2)
 	{
 		PORTD &= ~_BV(PD6); //LED off
 		SendChannelData();
 	}
 	else
-	{
-//		underflow
 		PORTD |= _BV(PD6); //LED on
-	}
 }
 
-static void ReadUSB_SendChannelData()
+void ReadUSB_SendChannelData()
 {
 /*
 	char* wb = ab.buffer+ab.head;
@@ -113,7 +112,7 @@ static void ReadUSB_SendChannelData()
 	}
 }
 
-static inline void SendChannelData()
+void SendChannelData()
 {
 	char* rb = (char*)(ab.buffer+ab.tail);
 
@@ -190,33 +189,26 @@ int main( void )
 
 	sei();
 
-	UENUM = 4; //interrupts can change this
-
 //	testAsm();
 //	if (testPtr == 'w') PORTD |= _BV(PD6);
 
 	while(1)
 	{
-/*
-		p = canWrite(writePtr,DATAGRAM_SIZE);
-		if ( p > 0 )
-		{
+		UENUM = 4; //interrupts can change this
 
-			if (!USB_READY(UEINTX)) continue;
-			
-//need to be able to process USB while processing SPI
+		if ( USB_READY(UEINTX) && (BytesFree(&ab) >= 8) )
+			dataState=1;
+		else if ( BytesUsed(&ab) >= 2)
+			dataState=2;
+		else
+			dataState=0;
+
+		while (needAudioFlag==0);
 cli();
-			UEINTX &= ~_BV(RXOUTI); //what?
+		needAudioFlag=0;
 
-			for( i = 0; i < DATAGRAM_SIZE; i++ )
-				writePtr[i] = UEDATX;
-
-			UEINTX &= ~_BV(FIFOCON);
+		DoAudioState();
 sei();
-
-			writePtr = p;
-		}
-*/
 	}
 
 	return 0;

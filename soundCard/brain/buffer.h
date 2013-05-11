@@ -9,9 +9,9 @@ typedef uint16_t bint;
 
 struct CircleBuffer
 {
-	volatile bint head, tail;
-	volatile bint bytesUsed;
-	volatile char buffer[BUFFER_LEN];
+	bint head, tail;
+	bint bytesUsed;
+	char buffer[BUFFER_LEN];
 };
 
 
@@ -19,7 +19,7 @@ struct CircleBuffer
 
 
 
-#include "buffer.h"
+//#include "buffer.h"
 
 void InitBuffer(struct CircleBuffer* cb);
 
