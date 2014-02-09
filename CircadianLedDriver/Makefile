@@ -1,9 +1,10 @@
 all : program.hex burn program.lst
 CC=avr-gcc
 
-PART = atmega8u2
-PROGPART = m8u2
-CFLAGS = -Wall -O2 -mmcu=$(PART) -DF_CPU=16000000UL
+PART=attiny44a
+PROGPART=t44
+
+CFLAGS = -Wall -O2 -mmcu=$(PART) -DF_CPU=8000000UL
 
 OBJS = main.o
 SRCS = main.c
@@ -27,7 +28,7 @@ slowburn : program.hex
 
 #This make the part use of internal 8Mhz clock.
 burnfuses :
-	avrdude -c usbtiny -p $(PROGPART) -U lfuse:w:0x4e:m -U hfuse:w:0xd9:m -U efuse:w:0xf4:m
+	avrdude -c usbtiny -p $(PROGPART) -U lfuse:w:0xef:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
 
 readfuses :
 	avrdude -c usbtiny -p $(PROGPART) -U hfuse:r:high.txt:b -U lfuse:r:low.txt:b
