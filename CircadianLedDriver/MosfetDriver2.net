@@ -1,0 +1,361 @@
+# EESchema Netlist Version 1.1 created  Sat 14 Dec 2013 11:08:06 AM EST
+(
+ ( /52AC8161 $noname  P5 CONNECTOR {Lib=CONNECTOR}
+  (    1 +12V )
+ )
+ ( /52AC815E $noname  P4 CONNECTOR {Lib=CONNECTOR}
+  (    1 N-000031 )
+ )
+ ( /52AC815D $noname  P3 CONNECTOR {Lib=CONNECTOR}
+  (    1 N-000030 )
+ )
+ ( /52AC8159 $noname  P2 CONNECTOR {Lib=CONNECTOR}
+  (    1 N-000033 )
+ )
+ ( /52AC8152 $noname  P1 CONNECTOR {Lib=CONNECTOR}
+  (    1 N-000034 )
+ )
+ ( /52A671DC $noname  D4 ZENER {Lib=ZENER}
+  (    1 GND )
+  (    2 N-000031 )
+ )
+ ( /52A671D2 $noname  D3 ZENER {Lib=ZENER}
+  (    1 GND )
+  (    2 N-000030 )
+ )
+ ( /52A671B1 $noname  D2 ZENER {Lib=ZENER}
+  (    1 GND )
+  (    2 N-000033 )
+ )
+ ( /52A67140 $noname  D1 ZENER {Lib=ZENER}
+  (    1 GND )
+  (    2 N-000034 )
+ )
+ ( /529614D9 $noname  FET_3 NTD5867NL {Lib=FET_N}
+  (    D N-000030 )
+  (    G N-000035 )
+  (    S GND )
+ )
+ ( /529614D5 $noname  R11 100 {Lib=R}
+  (    1 N-000035 )
+  (    2 N-000009 )
+ )
+ ( /529614D4 $noname  NPN3 3904 {Lib=NPN}
+  (    1 N-000009 )
+  (    2 N-000008 )
+  (    3 +12V )
+ )
+ ( /529614D3 $noname  PNP3 3906 {Lib=PNP}
+  (    1 N-000009 )
+  (    2 N-000010 )
+  (    3 GND )
+ )
+ ( /529614D1 $noname  R5 1.5K {Lib=R}
+  (    1 N-000008 )
+  (    2 N-000027 )
+ )
+ ( /529614D0 $noname  R6 500 {Lib=R}
+  (    1 N-000010 )
+  (    2 N-000027 )
+ )
+ ( /529614CF $noname  R8 500 {Lib=R}
+  (    1 N-000007 )
+  (    2 N-000026 )
+ )
+ ( /529614CE $noname  R7 1.5K {Lib=R}
+  (    1 N-000011 )
+  (    2 N-000026 )
+ )
+ ( /529614CC $noname  PNP4 3906 {Lib=PNP}
+  (    1 N-000002 )
+  (    2 N-000007 )
+  (    3 GND )
+ )
+ ( /529614CB $noname  NPN4 3904 {Lib=NPN}
+  (    1 N-000002 )
+  (    2 N-000011 )
+  (    3 +12V )
+ )
+ ( /529614CA $noname  R12 100 {Lib=R}
+  (    1 N-000001 )
+  (    2 N-000002 )
+ )
+ ( /529614C6 $noname  FET_4 NTD5867NL {Lib=FET_N}
+  (    D N-000031 )
+  (    G N-000001 )
+  (    S GND )
+ )
+ ( /529614BE $noname  FET_2 NTD5867NL {Lib=FET_N}
+  (    D N-000033 )
+  (    G N-000003 )
+  (    S GND )
+ )
+ ( /529614BA $noname  R10 100 {Lib=R}
+  (    1 N-000003 )
+  (    2 N-000004 )
+ )
+ ( /529614B9 $noname  NPN2 3904 {Lib=NPN}
+  (    1 N-000004 )
+  (    2 N-000005 )
+  (    3 +12V )
+ )
+ ( /529614B8 $noname  PNP2 3906 {Lib=PNP}
+  (    1 N-000004 )
+  (    2 N-000006 )
+  (    3 GND )
+ )
+ ( /529614B6 $noname  R3 1.5K {Lib=R}
+  (    1 N-000005 )
+  (    2 N-000028 )
+ )
+ ( /529614B5 $noname  R4 500 {Lib=R}
+  (    1 N-000006 )
+  (    2 N-000028 )
+ )
+ ( /52960C82 $noname  U1 ATTINY24-44-84/DIP-SO {Lib=ATTINY24-44-84/DIP-SO}
+  (    1 +5V )
+  (    2 ? )
+  (    3 ? )
+  (    4 ? )
+  (    5 ? )
+  (    6 N-000026 )
+  (    7 ? )
+  (    8 N-000027 )
+  (    9 N-000028 )
+  (   10 N-000025 )
+  (   11 ? )
+  (   12 ? )
+  (   13 ? )
+  (   14 GND )
+ )
+ ( /5296055E $noname  R2 500 {Lib=R}
+  (    1 N-000013 )
+  (    2 N-000025 )
+ )
+ ( /52960558 $noname  R1 1.5K {Lib=R}
+  (    1 N-000012 )
+  (    2 N-000025 )
+ )
+ ( /5296040F $noname  PNP1 3906 {Lib=PNP}
+  (    1 N-000014 )
+  (    2 N-000013 )
+  (    3 GND )
+ )
+ ( /52960404 $noname  NPN1 3904 {Lib=NPN}
+  (    1 N-000014 )
+  (    2 N-000012 )
+  (    3 +12V )
+ )
+ ( /52960347 $noname  R9 100 {Lib=R}
+  (    1 N-000016 )
+  (    2 N-000014 )
+ )
+ ( /527C59F0 $noname  FET_1 NTD5867NL {Lib=FET_N}
+  (    D N-000034 )
+  (    G N-000016 )
+  (    S GND )
+ )
+)
+*
+{ Allowed footprints by component:
+$component D4
+ D?
+ SO*
+ SM*
+$endlist
+$component D3
+ D?
+ SO*
+ SM*
+$endlist
+$component D2
+ D?
+ SO*
+ SM*
+$endlist
+$component D1
+ D?
+ SO*
+ SM*
+$endlist
+$component R11
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R5
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R6
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R8
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R7
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R12
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R10
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R3
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R4
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R2
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R1
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R9
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$endfootprintlist
+}
+{ Pin List by Nets
+Net 1 "" ""
+ R12 1
+ FET_4 G
+Net 2 "" ""
+ R12 2
+ NPN4 1
+ PNP4 1
+Net 3 "" ""
+ FET_2 G
+ R10 1
+Net 4 "" ""
+ PNP2 1
+ NPN2 1
+ R10 2
+Net 5 "" ""
+ R3 1
+ NPN2 2
+Net 6 "" ""
+ R4 1
+ PNP2 2
+Net 7 "" ""
+ R8 1
+ PNP4 2
+Net 8 "" ""
+ R5 1
+ NPN3 2
+Net 9 "" ""
+ PNP3 1
+ R11 2
+ NPN3 1
+Net 10 "" ""
+ PNP3 2
+ R6 1
+Net 11 "" ""
+ NPN4 2
+ R7 1
+Net 12 "" ""
+ NPN1 2
+ R1 1
+Net 13 "" ""
+ R2 1
+ PNP1 2
+Net 14 "" ""
+ PNP1 1
+ NPN1 1
+ R9 2
+Net 16 "" ""
+ R9 1
+ FET_1 G
+Net 25 "" ""
+ U1 10
+ R1 2
+ R2 2
+Net 26 "" ""
+ U1 6
+ R8 2
+ R7 2
+Net 27 "" ""
+ R6 2
+ R5 2
+ U1 8
+Net 28 "" ""
+ R4 2
+ U1 9
+ R3 2
+Net 29 "+12V" "+12V"
+ NPN4 3
+ P5 1
+ NPN1 3
+ NPN3 3
+ NPN2 3
+Net 30 "" ""
+ D3 2
+ P3 1
+ FET_3 D
+Net 31 "" ""
+ D4 2
+ P4 1
+ FET_4 D
+Net 32 "GND" "GND"
+ FET_3 S
+ D1 1
+ D4 1
+ D3 1
+ D2 1
+ FET_1 S
+ PNP1 3
+ U1 14
+ PNP4 3
+ PNP2 3
+ PNP3 3
+ FET_4 S
+ FET_2 S
+Net 33 "" ""
+ P2 1
+ FET_2 D
+ D2 2
+Net 34 "" ""
+ D1 2
+ P1 1
+ FET_1 D
+Net 35 "" ""
+ R11 1
+ FET_3 G
+}
+#End

@@ -1,0 +1,255 @@
+# EESchema Netlist Version 1.1 created  Wed 27 Nov 2013 11:23:14 AM EST
+(
+ ( /527C59F0 IPAKGDS FET_1 NTD5867NL
+  ( D N-000015 )
+  ( G N-000014 )
+  ( S GND )
+ )
+ ( /529614BE IPAKGDS FET_2 NTD5867NL
+  ( D N-000010 )
+  ( G N-000001 )
+  ( S GND )
+ )
+ ( /529614D9 IPAKGDS FET_3 NTD5867NL
+  ( D N-000029 )
+  ( G N-000035 )
+  ( S GND )
+ )
+ ( /529614C6 IPAKGDS FET_4 NTD5867NL
+  ( D N-000008 )
+  ( G N-000006 )
+  ( S GND )
+ )
+ ( /527C5A75 LEDV LED1 LED
+  ( 1 +12V )
+  ( 2 N-000015 )
+ )
+ ( /529614BD LEDV LED2 LED
+  ( 1 +12V )
+  ( 2 N-000010 )
+ )
+ ( /529614D8 LEDV LED3 LED
+  ( 1 +12V )
+  ( 2 N-000029 )
+ )
+ ( /529614C7 LEDV LED4 LED
+  ( 1 +12V )
+  ( 2 N-000008 )
+ )
+ ( /52960404 TO92 NPN1 3904
+  ( 1 N-000011 )
+  ( 2 N-000013 )
+  ( 3 +12V )
+ )
+ ( /529614B9 TO92 NPN2 3904
+  ( 1 N-000002 )
+  ( 2 N-000003 )
+  ( 3 +12V )
+ )
+ ( /529614D4 TO92 NPN3 3904
+  ( 1 N-000034 )
+  ( 2 N-000031 )
+  ( 3 +12V )
+ )
+ ( /529614CB TO92 NPN4 3904
+  ( 1 N-000007 )
+  ( 2 N-000022 )
+  ( 3 +12V )
+ )
+ ( /5296040F TO92 PNP1 3906
+  ( 1 N-000011 )
+  ( 2 N-000012 )
+  ( 3 GND )
+ )
+ ( /529614B8 TO92 PNP2 3906
+  ( 1 N-000002 )
+  ( 2 N-000004 )
+  ( 3 GND )
+ )
+ ( /529614D3 TO92 PNP3 3906
+  ( 1 N-000034 )
+  ( 2 N-000030 )
+  ( 3 GND )
+ )
+ ( /529614CC TO92 PNP4 3906
+  ( 1 N-000007 )
+  ( 2 N-000033 )
+  ( 3 GND )
+ )
+ ( /52960558 R1 R1 1.5K
+  ( 1 N-000013 )
+  ( 2 N-000026 )
+ )
+ ( /5296055E R1 R2 500
+  ( 1 N-000012 )
+  ( 2 N-000026 )
+ )
+ ( /529614B6 R1 R3 1.5K
+  ( 1 N-000003 )
+  ( 2 N-000028 )
+ )
+ ( /529614B5 R1 R4 500
+  ( 1 N-000004 )
+  ( 2 N-000028 )
+ )
+ ( /529614D1 R1 R5 1.5K
+  ( 1 N-000031 )
+  ( 2 N-000032 )
+ )
+ ( /529614D0 R1 R6 500
+  ( 1 N-000030 )
+  ( 2 N-000032 )
+ )
+ ( /529614CE R1 R7 1.5K
+  ( 1 N-000022 )
+  ( 2 N-000027 )
+ )
+ ( /529614CF R1 R8 500
+  ( 1 N-000033 )
+  ( 2 N-000027 )
+ )
+ ( /52960347 R1 R9 100
+  ( 1 N-000014 )
+  ( 2 N-000011 )
+ )
+ ( /529614BA R1 R10 100
+  ( 1 N-000001 )
+  ( 2 N-000002 )
+ )
+ ( /529614D5 R1 R11 100
+  ( 1 N-000035 )
+  ( 2 N-000034 )
+ )
+ ( /529614CA R1 R12 100
+  ( 1 N-000006 )
+  ( 2 N-000007 )
+ )
+ ( /52960C82 DIP-14__300 U1 ATTINY24-44-84/DIP-SO
+  ( 1 +5V )
+  ( 2 ? )
+  ( 3 ? )
+  ( 4 ? )
+  ( 5 N-000027 )
+  ( 6 N-000032 )
+  ( 7 N-000028 )
+  ( 8 N-000026 )
+  ( 9 ? )
+  ( 10 ? )
+  ( 11 ? )
+  ( 12 ? )
+  ( 13 ? )
+  ( 14 GND )
+ )
+)
+*
+{ Allowed footprints by component:
+$component LED1
+ LED-3MM
+ LED-5MM
+ LED-10MM
+ LED-0603
+ LED-0805
+ LED-1206
+ LEDV
+$endlist
+$component LED2
+ LED-3MM
+ LED-5MM
+ LED-10MM
+ LED-0603
+ LED-0805
+ LED-1206
+ LEDV
+$endlist
+$component LED3
+ LED-3MM
+ LED-5MM
+ LED-10MM
+ LED-0603
+ LED-0805
+ LED-1206
+ LEDV
+$endlist
+$component LED4
+ LED-3MM
+ LED-5MM
+ LED-10MM
+ LED-0603
+ LED-0805
+ LED-1206
+ LEDV
+$endlist
+$component R1
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R2
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R3
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R4
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R5
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R6
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R7
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R8
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R9
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R10
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R11
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R12
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$endfootprintlist
+}
