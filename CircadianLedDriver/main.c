@@ -75,8 +75,9 @@ uint8_t ComputeTween(uint8_t begin, uint8_t end, uint32_t startTime, uint32_t en
 
 void Animate()
 {
-	SetR(ComputeTween(0,255,0,600));
-	SetG(ComputeTween(0,255,600,601));
+	SetR(ComputeTween(1,198,0,600));
+	SetG(ComputeTween(1,90,0,600));
+	SetB(ComputeTween(1,39,0,600));
 	updateAnimate = 0;
 }
 
