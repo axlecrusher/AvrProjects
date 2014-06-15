@@ -4,7 +4,9 @@
 #include <util/delay.h>
 #include <avr/pgmspace.h>
 
-//#include "avr_print.h"
+/*
+#include "avr_print.h"
+*/
 
 #define DEBUG_SPEED 0
 
@@ -131,8 +133,8 @@ void GetNextLookupValues(uint32_t current_time)
 	next_lookup_steps = 0;
 	for (i = 0;i<LOOKUP_LENGTH;i+=2)
 	{
-		next_lookup_time += TICKS_SEC*pgm_read_word(step_lookup_table+i); //get timestamp
-		next_lookup_steps += pgm_read_word(step_lookup_table+i+1); //get steps
+		next_lookup_time += TICKS_SEC*pgm_read_word(step_lookup_table+i); /* get timestamp, convert into tick time */
+		next_lookup_steps += pgm_read_word(step_lookup_table+i+1); /* get steps */
 		if (next_lookup_time>current_time) return;
 	}
 }
@@ -160,11 +162,7 @@ int main( void )
 	PORTA = 0x00;
 
 	setup_clock();
-/*	sei(); */
-
 	PowerOnLEDSequence();
-
-//	cli();
 	timer_init();
 	sei();  /* enable interupts */
 
@@ -175,7 +173,7 @@ int main( void )
 		current_time = time_ticks;
 		sei();
 
-		uint32_t t = ComputeStep(time_ticks);
+		t = ComputeStep(time_ticks);
 
 		if (t>total_steps)
 		{
