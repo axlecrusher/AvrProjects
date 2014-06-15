@@ -3,15 +3,11 @@ all : program.lst main.hex burn
 PART=attiny44
 PROGPART=t44
 
-
-#-Os, -flt, -fwhole-program, and -mcall-prologues
-#Typically, I use this: avr-gcc -I -mmcu=atmega328 -std=gnu99 -Os -mmcu=atmega328 -DF_CPU=20000000UL -flto -fwhole-program -o program.elf (ALL YOUR C FILES) -L /usr/lib64/binutils/avr/2.19.1 -Wl,--relax -Wa,-a,-ad -mcall-prologues > program.lst
-
-CFLAGS=-g -Wall -pedantic -Os -std=gnu99 -mmcu=$(PART) -DF_CPU=20000000UL -fwhole-program
+CFLAGS=-g -Wall -pedantic -Os -mmcu=$(PART) -DF_CPU=20000000UL -fwhole-program
 CC=avr-gcc
 
-main.elf : main.c Functions.c
-	avr-gcc -I $(CFLAGS) -Wl,-Map,main.map,--relax -o $@ $^ -L/usr/lib/binutils/avr/2.18 -mcall-prologues
+main.elf : main.c
+	avr-gcc -I $(CFLAGS) -Wl,-Map,main.map -o $@ $^ -L/usr/lib/binutils/avr/2.18
 
 main.hex : main.elf
 	avr-objcopy -j .text -j .data -O ihex main.elf main.hex 
