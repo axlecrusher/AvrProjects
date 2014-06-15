@@ -121,6 +121,7 @@ inline uint32_t lerpStep(uint32_t time0, uint32_t time1, uint32_t step0, uint32_
 	a = (time_x - time0)<<15;
 	a/=(time1-time0);
 	a*=(step1-step0);
+	if(a&0x4000) a += 0x8000; /* round up */
 	a>>=15;
 	a+=step0;
 	return a;
@@ -173,7 +174,7 @@ int main( void )
 		current_time = time_ticks;
 		sei();
 
-		t = ComputeStep(time_ticks);
+		t = ComputeStep(current_time);
 
 		if (t>total_steps)
 		{

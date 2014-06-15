@@ -1,6 +1,6 @@
 /*
 	This is a program for emulating how the software will work on the attiny44. Used for developing and debugging algorithims.
-	gcc -Wall  test.c
+	gcc -Wall -lm test.c
 */
 
 #include <stdint.h>
@@ -51,16 +51,18 @@ inline float flerpStep(uint32_t time0, uint32_t time1, uint32_t step0, uint32_t 
 inline uint32_t lerpStep(uint32_t time0, uint32_t time1, uint32_t step0, uint32_t step1, uint32_t time_x)
 {
 	/* fixed point math, use 15 bits for fractional component (picked based on largest possible a=104799) */
-	uint32_t a;
+	uint32_t a,b;
 	float xxxx = flerpStep(time0, time1, step0, step1, time_x);
 	a = (time_x - time0)<<15;
 	if (a>max_a)max_a=a; //only useful when skipping pitshifting
 	a/=(time1-time0);
 //	d = ((step1-step0)*a)>>15;
 	a*=(step1-step0);
+	b=a;
+	if(a&0x4000) a+= 0x8000; /* round up */
 	a>>=15;
 	a+=step0;
-	printf("%d %d %f\n", time_x, a, xxxx);
+	printf("%d %d %f ... %d\n", time_x, a, round(xxxx), b);
 	return a;
 }
 
