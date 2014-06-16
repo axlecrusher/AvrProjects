@@ -11,6 +11,8 @@
 #define DEBUG_SPEED 0
 
 #define LED 0x20
+#define TRUE 0xFF
+#define FALSE 0x00
 
 #define TICKS_SEC 100
 
@@ -34,6 +36,9 @@ uint32_t prev_lookup_steps = 0;
 uint32_t next_lookup_time = 0;
 uint32_t next_lookup_steps = 0;
 
+uint16_t rswitch_count = 0;
+uint16_t sswitch_count = 0;
+
 enum DIRECTION
 {
 	FORWARD = 0,
@@ -47,6 +52,8 @@ volatile uint32_t total_steps = 0;
 unsigned char STEPPOSITION = 0;
 const char STEPORDER4[4] = {1,8,2,4};
 
+void (*MotorCallback)();
+
 unsigned char FullStep(unsigned char direction)
 {
 	STEPPOSITION &= 3;
@@ -54,21 +61,62 @@ unsigned char FullStep(unsigned char direction)
 	STEPPOSITION = direction==FORWARD?STEPPOSITION-1:STEPPOSITION+1;
 	return PORTA & 0x0f;
 }
+/*
+const char STEPORDER8[8] = {1,9,8,10,2,6,4,5};
+
+unsigned char HalfStep(unsigned char direction)
+{
+	STEPPOSITION  &= 7;
+	PORTA = (PORTA & 0xf0) | (STEPORDER8[STEPPOSITION]);
+	STEPPOSITION = direction==FORWARD?STEPPOSITION-1:STEPPOSITION+1;
+	return PORTA & 0x0f;
+}
+*/
+ISR( TIM0_COMPA_vect )
+{
+//	cli();
+	if ( (PINA & _BV(PA7)) > 0) { sswitch_count++; }
+	else { sswitch_count=0; }
+
+	if ( (PINB & _BV(PB2)) > 0) { rswitch_count++; }
+	else { rswitch_count=0; }
+//	sei();
+}
 
 ISR( TIM1_COMPA_vect )
 {
+//	cli();
 	++time_ticks;
 
+	MotorCallback();
+//	sei();
+}
+
+void SideRealClbk()
+{
 	if (completed_steps<total_steps)
 	{
 		FullStep(FORWARD);
 		++completed_steps;
-		PORTA ^= LED;		
+		PORTA ^= LED;
 	}
+}
+
+void RewindClbk()
+{
+	FullStep(BACKWARDS);
 }
 
 static void timer_init( void )
 {
+	/* setup switch timer */
+	TCCR0A = _BV(WGM01); /* CTC */
+	TCCR0B = _BV(CS02) | _BV(CS00);
+	OCR0A = 195;
+	TIMSK0 = _BV(OCIE0A);
+
+
+	/* setup motor timer */
 	TCCR1A = 0;
 	TCCR1B = _BV(WGM12) | _BV(CS11) | _BV(CS10); /* 64 divisor, CTC */
 	OCR1A = 3125; /* 1/100th of a second */
@@ -91,21 +139,6 @@ void PowerOnLEDSequence()
 	PORTA &= ~LED;
 }
 
-/*
-void CheckSwitches()
-{
-	if ( CheckSwitch(PINA, 1<<PA7) == true )
-		MotorCallback = RewindClbk;			
-	else
-		MotorCallback = SideRealClbk;
-
-	// Stub for checking the 2nd switch.
-	if ( CheckSwitch(PINB, 1<<PB2) == true )
-		PORTA |= LED;
-	else
-		PORTA &= ~LED;
-}
-*/
 /*
 inline float lerpStep(uint32_t time0, uint32_t time1, uint32_t step0, uint32_t step1, uint32_t time_x)
 {
@@ -130,11 +163,13 @@ inline uint32_t lerpStep(uint32_t time0, uint32_t time1, uint32_t step0, uint32_
 void GetNextLookupValues(uint32_t current_time)
 {
 	uint16_t i;
+	uint32_t tmp;
 	next_lookup_time = 0;
 	next_lookup_steps = 0;
 	for (i = 0;i<LOOKUP_LENGTH;i+=2)
 	{
-		next_lookup_time += TICKS_SEC*pgm_read_word(step_lookup_table+i); /* get timestamp, convert into tick time */
+		tmp = pgm_read_word(step_lookup_table+i);
+		next_lookup_time += tmp*TICKS_SEC; /* get timestamp, convert into tick time */
 		next_lookup_steps += pgm_read_word(step_lookup_table+i+1); /* get steps */
 		if (next_lookup_time>current_time) return;
 	}
@@ -167,6 +202,8 @@ int main( void )
 	timer_init();
 	sei();  /* enable interupts */
 
+	MotorCallback = SideRealClbk;
+
 	while (1)
 	{
 		cli();
@@ -184,6 +221,23 @@ int main( void )
 			total_steps = t;
 			sei();
 
+		}
+
+		/* check if rewind switch was held for 5 seconds */
+		if (rswitch_count>500)
+		{
+			OCR1A = 3125/2;
+			MotorCallback = RewindClbk;
+		}
+
+		/* check if stop switch has closed, 30ms */
+		if (sswitch_count>3 && OCR1A!=3125)
+		{
+			cli();
+			completed_steps = total_steps =	time_ticks = 0;
+			OCR1A = 3125;
+			MotorCallback = SideRealClbk;
+			sei();
 		}
 	}
 

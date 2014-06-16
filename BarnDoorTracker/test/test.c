@@ -69,11 +69,14 @@ inline uint32_t lerpStep(uint32_t time0, uint32_t time1, uint32_t step0, uint32_
 void GetNextLookupValues(uint32_t current_time)
 {
 	uint16_t i;
+	uint32_t tmp;
 	next_lookup_time = 0;
 	next_lookup_steps = 0;
 	for (i = 0;i<LOOKUP_LENGTH;i+=2)
 	{
-		next_lookup_time += TICKS_SEC*pgm_read_word(step_lookup_table+i); //get timestamp
+		printf("loop\n");
+		tmp = pgm_read_word(step_lookup_table+i);
+		next_lookup_time += tmp*TICKS_SEC; /* get timestamp, convert into tick time */
 		next_lookup_steps += pgm_read_word(step_lookup_table+i+1); //get steps
 		if (next_lookup_time>current_time) return;
 	}
