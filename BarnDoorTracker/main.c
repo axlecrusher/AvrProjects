@@ -36,8 +36,8 @@ uint32_t prev_lookup_steps = 0;
 uint32_t next_lookup_time = 0;
 uint32_t next_lookup_steps = 0;
 
-uint16_t rswitch_count = 0;
-uint16_t sswitch_count = 0;
+uint16_t reset_switch_count = 0;
+uint16_t stop_switch_count = 0;
 
 enum DIRECTION
 {
@@ -75,11 +75,11 @@ unsigned char HalfStep(unsigned char direction)
 ISR( TIM0_COMPA_vect )
 {
 //	cli();
-	if ( (PINA & _BV(PA7)) > 0) { sswitch_count++; }
-	else { sswitch_count=0; }
+	if ( (PINA & _BV(PA7)) > 0) { stop_switch_count++; }
+	else { stop_switch_count=0; }
 
-	if ( (PINB & _BV(PB2)) > 0) { rswitch_count++; }
-	else { rswitch_count=0; }
+	if ( (PINB & _BV(PB2)) > 0) { reset_switch_count++; }
+	else { reset_switch_count=0; }
 //	sei();
 }
 
@@ -100,11 +100,17 @@ void SideRealClbk()
 		++completed_steps;
 		PORTA ^= LED;
 	}
+	else
+	{
+		/* power off motor*/
+//		PORTA = (PORTA & 0xf0);
+	}
 }
 
 void RewindClbk()
 {
 	FullStep(BACKWARDS);
+//	HalfStep(BACKWARDS);
 }
 
 static void timer_init( void )
@@ -184,7 +190,8 @@ uint32_t ComputeStep(uint32_t current_time)
 		GetNextLookupValues(current_time);
 	}
 
-	if (next_lookup_time==current_time) return next_lookup_steps;
+//	if (next_lookup_time==current_time) return next_lookup_steps;
+	if (next_lookup_time<=current_time) return next_lookup_steps;
 
 	return lerpStep(prev_lookup_time, next_lookup_time, prev_lookup_steps, next_lookup_steps, current_time);
 }
@@ -206,8 +213,8 @@ int main( void )
 
 	while (1)
 	{
-		cli();
 		/* critical section, prevent race condition */
+		cli();
 		current_time = time_ticks;
 		sei();
 
@@ -215,23 +222,25 @@ int main( void )
 
 		if (t>total_steps)
 		{
-			cli();
 			/* critical section, prevent race condition
 			   updating step count can take a while so prevent interrupts while this happens */
+			cli();
 			total_steps = t;
 			sei();
 
 		}
 
 		/* check if rewind switch was held for 5 seconds */
-		if (rswitch_count>500)
+		if (reset_switch_count>500)
 		{
+			cli();
 			OCR1A = 3125/2;
 			MotorCallback = RewindClbk;
+			sei();
 		}
 
 		/* check if stop switch has closed, 30ms */
-		if (sswitch_count>3 && OCR1A!=3125)
+		if (stop_switch_count>3 && OCR1A!=3125)
 		{
 			cli();
 			completed_steps = total_steps =	time_ticks = 0;
