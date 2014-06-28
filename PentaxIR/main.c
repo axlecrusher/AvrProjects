@@ -160,7 +160,9 @@ void ProcesButton()
 
 	if (bt == 0) return;
 
-	/* Less than 1 second button press starts/restarts exposure sequence, anything longers sets the exposure time */
+	/* Less than 1 second button press starts/restarts exposure sequence, anything longers sets the exposure time.
+	Every second of depressed time maps to one minute of exposure time.
+	After the exposure time is set, the button must be pressed once for less than a second to start the exposure process. */
 	if (bt < 1000)
 	{
 		BeginExposure();
