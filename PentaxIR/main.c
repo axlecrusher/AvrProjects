@@ -7,6 +7,7 @@
 
 /*khz*/
 #define FREQ 38
+#define EXPOSURE_DELAY 6000
 
 /* variables that can be changed by interrupts */
 volatile uint32_t msec_time = 0;
@@ -35,7 +36,7 @@ ISR(TIMER0_COMPA_vect)
 		++button_press_ms;
 		flags |= _BV(BUTTON_UPDATE);
 	}
-	else if (button_press_ms > 0) //button released
+	else if (button_press_ms > 0) //button released, remember to clear button_press_ms later
 	{
 		flags |= _BV(BUTTON_RELEASED);
 	}
@@ -128,7 +129,7 @@ void BeginExposure()
 void EndExposure()
 {
 	shutterNow();
-	shutter_event_time = AtomicRead32(&msec_time) + 6000;
+	shutter_event_time = AtomicRead32(&msec_time) + EXPOSURE_DELAY;
 	DoShutterEvent = BeginExposure;
 }
 
@@ -140,6 +141,7 @@ void ButtonFeedback()
 	flags &= ~_BV(BUTTON_UPDATE);
 	sei();
 
+	/* illuminate for first half of each elasped second */
 	if ((bt>1000) & ((bt&1023)<500))
 	{
 		PORTD |= _BV(PD5);
