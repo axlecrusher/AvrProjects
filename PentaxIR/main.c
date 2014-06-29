@@ -31,7 +31,7 @@ ISR(TIMER0_COMPA_vect)
 {
 	++msec_time;
 
-	if ((PINB & _BV(PB7))==0) //button down
+	if ((PINB & _BV(PB1))==0) //button down
 	{
 		++button_press_ms;
 		flags |= _BV(BUTTON_UPDATE);
@@ -45,27 +45,25 @@ ISR(TIMER0_COMPA_vect)
 static void setup_clock()
 {
 	CLKPR = 0x80;	/*Setup CLKPCE to be receptive*/
-	CLKPR = _BV(CLKPS0); /* 1/2 clock speed, 8mhz */
-//	CLKPR = 0x00; //no divisor
+//	CLKPR = _BV(CLKPS0); /* 1/2 clock speed, 8mhz */
+	CLKPR = 0x00; //no divisor, 8mhz attiny25
 }
 
 static void setup_timers()
 {
 	TCCR0A = _BV(WGM01);
-	TCCR0B = _BV(CS01) | _BV(CS00);
+	TCCR0B = _BV(CS01) | _BV(CS00); /* x/64 */
 	OCR0A = 125; /* 1ms */
-	TIMSK0 = _BV(OCIE0A);
+	TIMSK = _BV(OCIE0A);
 }
 
 static void SetupPins()
 {
-	DDRD = _BV(PD5);
-	PORTD = 0;
+	DDRB = _BV(PB0);
+//	PORTB = 0;
 
 	//button input
-//	DDRB = _BV(PB7);
-//	DDRD = _BV(PD5);
-	PORTB = _BV(PB7);
+	PORTB = _BV(PB1);
 }
 
 uint32_t AtomicRead32(volatile uint32_t* x)
@@ -93,9 +91,9 @@ void high(uint16_t msec) {
 
 	while(AtomicRead32(&msec_time) < t)
 	{
-		PORTD |= _BV(PD5);
+		PORTB |= _BV(PB0);
 		_delay_us(pause);
-		PORTD &= ~_BV(PD5);
+		PORTB &= ~_BV(PB0);
 		_delay_us(pause);
 	}
 }
@@ -144,11 +142,11 @@ void ButtonFeedback()
 	/* illuminate for first half of each elasped second */
 	if ((bt>1000) & ((bt&1023)<500))
 	{
-		PORTD |= _BV(PD5);
+		PORTB |= _BV(PB0);
 	}
 	else
 	{
-		PORTD &= ~_BV(PD5);
+		PORTB &= ~_BV(PB0);
 	}
 }
 
