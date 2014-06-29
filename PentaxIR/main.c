@@ -47,6 +47,8 @@ static void setup_clock()
 	CLKPR = 0x80;	/*Setup CLKPCE to be receptive*/
 //	CLKPR = _BV(CLKPS0); /* 1/2 clock speed, 8mhz */
 	CLKPR = 0x00; //no divisor, 8mhz attiny25
+
+	OSCCAL=0x5B; //set ocillator calibration
 }
 
 static void setup_timers()
@@ -56,7 +58,13 @@ static void setup_timers()
 	OCR0A = 125; /* 1ms */
 	TIMSK = _BV(OCIE0A);
 }
-
+/*
+void ReportCalibration()
+{
+	sendhex2(OSCCAL);
+	sendchr('\n');
+}
+*/
 static void SetupPins()
 {
 	DDRB = _BV(PB0);
@@ -189,10 +197,12 @@ int main( void )
 	setup_clock();
 	setup_timers();
 
+//	setup_spi();
 	sei();
 
 	while(1)
 	{
+//		ReportCalibration();
 		if (DoShutterEvent != NULL) TryShutterEvent();
 		if ((flags & _BV(BUTTON_UPDATE))>0) ButtonFeedback();
 		if ((flags & _BV(BUTTON_RELEASED))>0) ProcesButton();

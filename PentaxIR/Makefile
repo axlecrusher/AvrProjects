@@ -27,7 +27,7 @@ slowburn : program.hex
 
 #This make the part use an external crystal.
 burnfuses :
-	avrdude -c usbtiny -p $(PROGPART) -U lfuse:w:0xe2:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m 
+	avrdude -c usbtiny -p $(PROGPART) -U lfuse:w:0xa2:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m 
 
 readfuses :
 	avrdude -c usbtiny -p $(PROGPART) -U hfuse:r:high.txt:b -U lfuse:r:low.txt:b
