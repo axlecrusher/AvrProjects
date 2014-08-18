@@ -8,13 +8,15 @@ PROGRAMCODE=m328
 #CPUFREQ=28636363UL
 #CPUFREQ=20000000UL
 CPUFREQ=8000000UL
-COMMON_FLAGS= -mmcu=$(PROCESSOR) -I. 
+COMMON_FLAGS= -mmcu=$(PROCESSOR) -I.
 CFLAGS = -std=gnu99 -O1 $(COMMON_FLAGS) -DF_CPU=$(CPUFREQ) #-DNO_HTTP #-DMUTE_PRINTF #-DNO_HTTP #-Wall
 CFLAGS:=$(CFLAGS) #-flto -fwhole-program 
 AS = avr-gcc
 ASFLAGS = $(COMMON_FLAGS) -c
 EXTRA_LD_FLAGS=-Wl,--relax -Wa,-a,-ad -mcall-prologues 
 
+program.lst : $(SRCS)
+	avr-gcc -c -g -Wa,-a,-ad $(CFLAGS) $^ > $@
 
 program.elf : $(SRCS)
 	avr-gcc -I -mmcu=$(PROCESSOR) $(CFLAGS) -o $@ $^ -L /usr/lib64/binutils/avr/2.19.1 $(EXTRA_LD_FLAGS) > program.lst
