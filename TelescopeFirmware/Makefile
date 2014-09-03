@@ -1,12 +1,12 @@
 all : program.hex burn program.lst
 CC=avr-gcc
 
-PART = atmega8u2
-PROGPART = m8u2
+PART = atmega32u2
+PROGPART = m32u2
 CFLAGS = -Wall -O2 -mmcu=$(PART) -DF_CPU=16000000UL
 
-OBJS = test.o
-SRCS = test.c
+OBJS = test.o avr_print.o
+SRCS = test.c avr_print.c
 
 program.elf : $(OBJS)
 	avr-gcc -I  $(CFLAGS) -Wl,-Map,program.map -o $@ $^ -L/usr/lib/binutils/avr/2.18
@@ -27,7 +27,7 @@ slowburn : program.hex
 
 #This make the part use an external crystal.
 burnfuses :
-	avrdude -c usbtiny -p $(PROGPART) -U lfuse:w:0x0e:m -U hfuse:w:0xd9:m -U efuse:w:0xf4:m
+	avrdude -c usbtiny -p $(PROGPART) -U lfuse:w:0xde:m -U hfuse:w:0xd9:m -U efuse:w:0xf4:m
 
 readfuses :
 	avrdude -c usbtiny -p $(PROGPART) -U hfuse:r:high.txt:b -U lfuse:r:low.txt:b

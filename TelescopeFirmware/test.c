@@ -4,12 +4,20 @@
 #include <util/delay.h>
 #include <string.h>
 #include <avr/sfr_defs.h>
+#include "avr_print.h"
 
 #define STEPCOUNT 6
-uint8_t steps[STEPCOUNT] = { 0x01, 0x03, 0x02, 0x06, 0x04, 0x05 };
-uint8_t i = 0;
+//uint8_t steps[STEPCOUNT] = { 0x01, 0x03, 0x02, 0x06, 0x04, 0x05 };
+//uint8_t i = 0;
 
-#define WAIT 1953
+#define WAIT 1562
+
+#define FORWARD 0x01
+#define BACKWARD 0x02
+#define STOP 0x00
+
+volatile uint32_t rcount;
+volatile uint8_t direction;
 
 ISR(TIMER1_COMPA_vect)
 {
@@ -18,11 +26,44 @@ ISR(TIMER1_COMPA_vect)
 //	++i;
 //	if (i>=STEPCOUNT) i = 0;
 
-	PORTD ^= 0x01;
+//	PORTD ^= 0x01;
+
 	if (OCR1A == WAIT)
+	{
+
 		OCR1A = 400; //might be lower limit for movement (at least visible)
+		PORTD = (PORTD & ~0x03) | direction;
+	}
 	else
+	{
+		PORTD = (PORTD & ~0x03) | 0x00;
 		OCR1A = WAIT;
+	}
+}
+
+ISR(INT2_vect)
+{
+	uint8_t t = PIND & (_BV(PD2) | _BV(PD3));
+	if (t == _BV(PD2))
+		rcount++;
+}
+
+ISR(INT3_vect)
+{
+
+	uint8_t t1 = PIND & (_BV(PD2) | _BV(PD3));
+	/*
+	uint8_t t2 = PIND & (_BV(PD2) | _BV(PD3));
+	do 
+	{
+		t1=t2;
+		_delay_us (2.0f);
+		t2 = PIND & (_BV(PD2) | _BV(PD3));
+	}
+	while(t1 != t2);
+*/
+	if (t1 == _BV(PD3))
+		rcount--;
 }
 
 static void setup_clock()
@@ -43,23 +84,69 @@ static void setup_timers()
 
 static void SetupDriverPins()
 {
-	DDRD = 0x7;
+	DDRD = _BV(PD0) | _BV(PD1) | _BV(PD6);
 	PORTD = 0;
+}
+
+void forward() {
+//	PORTD &= ~_BV(PD1);
+//	PORTD |= _BV(PD0);
+	direction = FORWARD;
+}
+
+void backward() {
+//	PORTD &= ~_BV(PD0);
+//	PORTD |= _BV(PD1);
+	direction = BACKWARD;
+}
+
+void stop() {
+	PORTD &= ~(_BV(PD1)|_BV(PD2));
+	direction = STOP;
 }
 
 int main( void )
 {
 	cli();
 
+	EICRA = _BV(ISC21) | _BV(ISC20) | _BV(ISC31) | _BV(ISC30);
+	EIMSK = _BV(INT2) | _BV(INT3);
+
+rcount = 0;
+
 //	DDRC = _BV(PC6); //output pin
 	SetupDriverPins();
 
 	setup_clock();
 	setup_timers();
+	setup_spi();
 
 	sei();
 
-	while(1);
+uint32_t t = 0;
+	while(1)
+	{
+//		PORTD &= ~_BV(PD6);
+		cli();
+		t=rcount;
+		t &= 0xffffff00;
+		sei();
+if (t>0xff000000) 
+	t = 0;
+
+		if (t<0x10000) {
+			forward();
+		}
+		else if (t>0x10000) {
+			backward();
+		}
+		else
+		{
+			stop();
+		}
+		sendhex8(&t);
+		sendchr('\n');
+	}
 
 	return 0;
 }
