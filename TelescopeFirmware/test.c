@@ -10,8 +10,10 @@
 //uint8_t steps[STEPCOUNT] = { 0x01, 0x03, 0x02, 0x06, 0x04, 0x05 };
 //uint8_t i = 0;
 
-#define WAIT 1562
+#define PWM_MAX 0xffff
+#define PWM_MIN 4896
 
+#define MOTORMASK 0x03
 #define FORWARD 0x01
 #define BACKWARD 0x02
 #define STOP 0x00
@@ -19,26 +21,17 @@
 volatile uint32_t rcount;
 volatile uint8_t direction;
 
+// two output pins need to be driven with pwm so do our own handling of pin toggling using counter interrupts
+ISR(TIMER1_OVF_vect)
+{
+	//interrupt to turn on PWM pulse
+	PORTD = (PORTD & ~MOTORMASK) | direction;
+}
+
 ISR(TIMER1_COMPA_vect)
 {
-
-//	PORTD = steps[i];
-//	++i;
-//	if (i>=STEPCOUNT) i = 0;
-
-//	PORTD ^= 0x01;
-
-	if (OCR1A == WAIT)
-	{
-
-		OCR1A = 400; //might be lower limit for movement (at least visible)
-		PORTD = (PORTD & ~0x03) | direction;
-	}
-	else
-	{
-		PORTD = (PORTD & ~0x03) | 0x00;
-		OCR1A = WAIT;
-	}
+	//interrupt to turn off PWM pulse
+	PORTD = (PORTD & ~MOTORMASK) | 0x03; //brake mode
 }
 
 ISR(INT2_vect)
@@ -72,14 +65,34 @@ static void setup_clock()
 	CLKPR = 0x00; //no divisor
 }
 
+//0 to 65535
+static void set_motor_pwm(uint32_t t)
+{
+	if (t==0)
+	{
+		//disable interrupt
+		TIMSK1 &= ~_BV(TOIE1);
+	}
+	else if (t<PWM_MIN) 
+	{
+		OCR1A = PWM_MIN;
+		TIMSK1 |= _BV(TOIE1);
+	}
+	else
+	{
+		OCR1A = t;		
+	}
+}
+
 static void setup_timers()
 {
+	//16mhz / 256
+//	TCCR1A = _BV(WGM11) | _BV(WGM10);//Toggle OC1A
+	TCCR1B =  _BV(CS11); //CTC, 256 divisor, 62.5kHz
 
-	TCCR1A = _BV(COM1A0);//Toggle OC1A
-	TCCR1B = _BV(WGM12) | _BV(CS12); //CTC, 256 divisor
-	OCR1A = WAIT; //60hz
-	TIMSK1 = 0x00; //no interrupts
-	TIMSK1 = OCIE1A<<1;
+		TIMSK1 = _BV(OCIE1A) | _BV(TOIE1);
+
+	set_motor_pwm(0);
 }
 
 static void SetupDriverPins()
@@ -124,6 +137,9 @@ rcount = 0;
 	sei();
 
 uint32_t t = 0;
+			forward();
+while(1);
+
 	while(1)
 	{
 //		PORTD &= ~_BV(PD6);
