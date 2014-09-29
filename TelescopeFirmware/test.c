@@ -4,6 +4,7 @@
 #include <util/delay.h>
 #include <string.h>
 #include <avr/sfr_defs.h>
+#include <stdlib.h>
 #include "avr_print.h"
 
 #define STEPCOUNT 6
@@ -11,7 +12,8 @@
 //uint8_t i = 0;
 
 #define PWM_MAX 0xffff
-#define PWM_MIN 4896
+#define PWM_MIN 2448
+//#define PWM_MIN 4896
 
 #define MOTORMASK 0x03
 #define FORWARD 0x01
@@ -81,6 +83,7 @@ static void set_motor_pwm(uint32_t t)
 	else
 	{
 		OCR1A = t;		
+		TIMSK1 |= _BV(TOIE1);
 	}
 }
 
@@ -90,7 +93,7 @@ static void setup_timers()
 //	TCCR1A = _BV(WGM11) | _BV(WGM10);//Toggle OC1A
 	TCCR1B =  _BV(CS11); //CTC, 256 divisor, 62.5kHz
 
-		TIMSK1 = _BV(OCIE1A) | _BV(TOIE1);
+	TIMSK1 = _BV(OCIE1A) | _BV(TOIE1);
 
 	set_motor_pwm(0);
 }
@@ -104,18 +107,46 @@ static void SetupDriverPins()
 void forward() {
 //	PORTD &= ~_BV(PD1);
 //	PORTD |= _BV(PD0);
+	cli();
 	direction = FORWARD;
+	sei();
 }
 
 void backward() {
 //	PORTD &= ~_BV(PD0);
 //	PORTD |= _BV(PD1);
+	cli();
 	direction = BACKWARD;
+	sei();
 }
 
 void stop() {
 	PORTD &= ~(_BV(PD1)|_BV(PD2));
 	direction = STOP;
+}
+
+void slew(int32_t *dx)
+{
+	uint32_t adx = labs(*dx);
+/*
+		sendhex8(dx);
+		sendchr(':');
+		sendhex8(&adx);
+		sendchr('\n');
+*/
+	if (*dx < 0 )
+		backward();
+	else
+		forward();
+
+	if (adx<0xF)	
+		set_motor_pwm(0);
+	else if (adx<0x800)
+		set_motor_pwm(PWM_MIN);
+	else if (adx<0x1000)
+		set_motor_pwm(PWM_MIN*2);
+	else
+		set_motor_pwm(0xffff);
 }
 
 int main( void )
@@ -136,32 +167,28 @@ rcount = 0;
 
 	sei();
 
-uint32_t t = 0;
-			forward();
-while(1);
+	uint32_t t = 0;
+	uint32_t y_pos = 0x10000 * 2;
+	forward();
+//	while(1);
+	set_motor_pwm(1);
 
 	while(1)
 	{
 //		PORTD &= ~_BV(PD6);
 		cli();
 		t=rcount;
-		t &= 0xffffff00;
+//		t &= 0xffffff00;
 		sei();
-if (t>0xff000000) 
-	t = 0;
 
-		if (t<0x10000) {
-			forward();
-		}
-		else if (t>0x10000) {
-			backward();
-		}
-		else
-		{
-			stop();
-		}
-		sendhex8(&t);
+//		if (t>0xff000000) t = 0;
+
+		int32_t sy = (y_pos - t);
+		slew(&sy);
+/*
+		sendhex8(&dy);
 		sendchr('\n');
+		*/
 	}
 
 	return 0;
