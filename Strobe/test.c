@@ -5,32 +5,58 @@
 #include <string.h>
 #include <avr/sfr_defs.h>
 
+ISR(TIM1_COMPA_vect)
+{
+	TCCR0A = _BV(COM0B1) | _BV(COM0B0) | _BV(WGM01); //set high on match
+	TCCR0B |= _BV(FOC0B); //force match to force pin high, strobe on
+	TCCR0A = _BV(COM0B1) | _BV(WGM01); //clear on match
+	TCNT0 = 0; //simulate ctc
+}
+
 static void setup_clock()
 {
-	CLKPR = 0x80;	/*Setup CLKPCE to be receptive*/
-	CLKPR = 0x00; //no divisor
+//	CLKPR = 0x80;	/*Setup CLKPCE to be receptive*/
+//	CLKPR = 0x00; //no divisor
+	/* 1 Mhz clock */
 }
 
 static void setup_timers()
 {
-
+/*
 	TCCR1A = _BV(COM1A0);//Toggle OC1A
 	TCCR1B = _BV(WGM12) | _BV(CS12); //CTC, 256 divisor
 	OCR1A = 1041; //60hz
 	TIMSK1 = 0x00; //no interrupts
+*/
+
+	/* toggle OC1B, CK/4096, CTC */
+//	TCCR1 = _BV(CS13) | _BV(CS12) | _BV(CS10) | _BV(CTC1);
+
+	/* strobe on timer */
+	/* OC0B, CTC, clear OC0B */
+	TCCR0A = _BV(COM0B1) | _BV(WGM01);
+	TCCR0B = _BV(CS02) | _BV(CS00);
+//	TIMSK = 0;
+	OCR0A = 9; //1/100th second
+
+	/* timer for firing strobe */
+	TCCR1 = _BV(CTC1) | _BV(CS12) | _BV(CS13)| _BV(CS10);
+	TIMSK = _BV(OCIE1A);
+	OCR1C = 10;
 }
 
 int main( void )
 {
 	cli();
 
-	DDRC = _BV(PC6); //output pin
 
 	setup_clock();
 	setup_timers();
+	DDRB = _BV(PB1) | _BV(PB4); //output pin
 
 	sei();
 
+//PORTB = _BV(PB3);
 	while(1);
 
 	return 0;
