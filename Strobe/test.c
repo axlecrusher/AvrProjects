@@ -7,9 +7,9 @@
 
 ISR(TIM1_COMPA_vect)
 {
-	TCCR0A = _BV(COM0B1) | _BV(COM0B0) | _BV(WGM01); //set high on match
-	TCCR0B |= _BV(FOC0B); //force match to force pin high, strobe on
 	TCCR0A = _BV(COM0B1) | _BV(WGM01); //clear on match
+	TCCR0B |= _BV(FOC0B); //force match to force pin low, strobe on
+	TCCR0A = _BV(COM0B1) | _BV(COM0B0) | _BV(WGM01); //set high on match
 	TCNT0 = 0; //simulate ctc
 }
 
@@ -34,7 +34,7 @@ static void setup_timers()
 
 	/* strobe on timer */
 	/* OC0B, CTC, clear OC0B */
-	TCCR0A = _BV(COM0B1) | _BV(WGM01);
+	TCCR0A = _BV(COM0B1) | _BV(COM0B0) | _BV(WGM01); //set high on match
 	TCCR0B = _BV(CS02) | _BV(CS00);
 //	TIMSK = 0;
 	OCR0A = 9; //1/100th second
@@ -42,7 +42,7 @@ static void setup_timers()
 	/* timer for firing strobe */
 	TCCR1 = _BV(CTC1) | _BV(CS12) | _BV(CS13)| _BV(CS10);
 	TIMSK = _BV(OCIE1A);
-	OCR1C = 10;
+	OCR1C = 25;
 }
 
 int main( void )
