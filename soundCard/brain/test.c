@@ -123,7 +123,7 @@ void SendChannelData()
 	while(!(SPSR & _BV(SPIF))); //wait for complete
 }
 
-void setup_lr_interrupt()
+void setup_channel_interrupt()
 {
 	//setup interrupt on rising edge.
 	//Rising edge indicates right channel processing by attiny
@@ -186,7 +186,7 @@ int main( void )
 //	_delay_ms(10); //wait for tiny 44 to be ready for data
 //	setup_timers();
 
-	setup_lr_interrupt();
+	setup_channel_interrupt();
 
 	DDRD |= _BV(PD6);
 
