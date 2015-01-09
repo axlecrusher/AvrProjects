@@ -152,6 +152,8 @@ void slew(int32_t *dx)
 		set_motor_pwm(0xffff);
 }
 
+extern uint8_t doUSBstuff;
+
 int main( void )
 {
 	cli();
@@ -181,12 +183,19 @@ rcount = 0;
 
 	while(1)
 	{
+		if (doUSBstuff)
+		{
+			PollEndpoint0();
+			doUSBstuff = 0;
+		}
+
+		/*
 		UENUM = 1; //interrupts can change this
 		if ( USB_READY(UEINTX) )
 		{
 
 		}
-
+*/
 
 //		PORTD &= ~_BV(PD6);
 		cli();

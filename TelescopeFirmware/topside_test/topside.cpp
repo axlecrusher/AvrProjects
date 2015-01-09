@@ -142,7 +142,7 @@ void send_ping() {
 	clock_gettime(CLOCK_REALTIME, &m_pollTime);
 	int r = libusb_control_transfer( devh,
 		LIBUSB_ENDPOINT_OUT | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE, //reqtype
-		0xA4, //request
+		PING, //request
 		0x0100, //wValue
 		0x0000, //wIndex
 		b,
@@ -339,7 +339,7 @@ int r;
 	while(1)
 	{
 		send_ping();
-//		printf("loop\n");
+		printf("loop\n");
 	tv.tv_sec = 0;
 	tv.tv_usec = 1000;
 

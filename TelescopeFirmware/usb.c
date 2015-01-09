@@ -77,12 +77,19 @@ ISR(USB_GEN_vect)
 */
 }
 
+volatile uint8_t doUSBstuff = 0;
+
 
 // USB Endpoint Interrupt - endpoint 0 is handled here.  The
 // other endpoints are manipulated by the user-callable
 // functions, and the start-of-frame interrupt.
 //
 ISR(USB_COM_vect)
+{
+	doUSBstuff = 1;
+}
+
+void PollEndpoint0()
 {
 	//this interrupt only happens once so who cares how long it takes
 	uint8_t intbits;
@@ -102,8 +109,9 @@ ISR(USB_COM_vect)
 	intbits = UEINTX;
 
 //	SPIPutChar( '*' );	
-
-	if (intbits & (1<<RXSTPI)) {
+//AVR docs say controll points should not be controlled by interrupts
+	if (intbits & _BV(RXSTPI)) //new SETUP
+	{
 		bmRequestType = UEDATX;
 		bRequest = UEDATX;
 		wValue = UEDATX;
@@ -113,7 +121,7 @@ ISR(USB_COM_vect)
 		wLength = UEDATX;
 		wLength |= (UEDATX << 8);
 
-		UEINTX = ~((1<<RXSTPI) | (1<<RXOUTI) | (1<<TXINI));
+		UEINTX = ~(_BV(RXSTPI) | _BV(RXOUTI) | _BV(TXINI));
 		if (bRequest == GET_DESCRIPTOR)
 		{
 			list = (const uint8_t *)descriptor_list;
@@ -220,8 +228,18 @@ ISR(USB_COM_vect)
 		else if ( bRequest == PING )
 		{
 //			UENUM = 0;
-			usb_wait_in_ready();
+//			usb_wait_in_ready();
+			usb_ack_out();
 //			UEDATX = "PONG\n";
+				// wait for host ready for IN packet
+				do
+				{
+					i = UEINTX;
+				} while (!(i & (_BV(TXINI)|(_BV(RXOUTI)))));
+				if (i & _BV(RXOUTI)) return;	// abort
+				// send IN packet
+//				n = len < ENDPOINT0_SIZE ? len : ENDPOINT0_SIZE;
+
 			UEDATX = 0xAB;
 			usb_send_in();
 			return;
