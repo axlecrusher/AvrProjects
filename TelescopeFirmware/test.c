@@ -5,7 +5,7 @@
 #include <string.h>
 #include <avr/sfr_defs.h>
 #include <stdlib.h>
-//#include "avr_print.h"
+#include "avr_print.h"
 
 #include "usb.h"
 #include "avrUsbUtils.h"
@@ -168,7 +168,7 @@ rcount = 0;
 
 	setup_clock();
 	setup_timers();
-//	setup_spi();
+	SetupPrintf();
 
 	USB_ZeroPrescaler();
 	USB_Init();
@@ -183,24 +183,9 @@ rcount = 0;
 
 	while(1)
 	{
-		if (doUSBstuff)
-		{
-			PollEndpoint0();
-			doUSBstuff = 0;
-		}
-
-		/*
-		UENUM = 1; //interrupts can change this
-		if ( USB_READY(UEINTX) )
-		{
-
-		}
-*/
-
 //		PORTD &= ~_BV(PD6);
 		cli();
 		t=rcount;
-//		t &= 0xffffff00;
 		sei();
 
 //		if (t>0xff000000) t = 0;

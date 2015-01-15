@@ -2,7 +2,10 @@
 #include "usb.h"
 #include "SPIPrinting.h"
 #include "usbconfig.h"
+#include "usb_handler.h"
 #include <stdio.h>
+
+#include "avrUsbUtils.h"
 
 //unsigned char USB_Initialized;
 volatile char USBInitState;
@@ -86,7 +89,8 @@ volatile uint8_t doUSBstuff = 0;
 //
 ISR(USB_COM_vect)
 {
-	doUSBstuff = 1;
+//	doUSBstuff = 1;
+	PollEndpoint0();
 }
 
 void PollEndpoint0()
@@ -225,30 +229,9 @@ void PollEndpoint0()
 			usb_send_in();
 			return;
 		}
-		else if ( bRequest == PING )
-		{
-//			UENUM = 0;
-//			usb_wait_in_ready();
-			usb_ack_out();
-//			UEDATX = "PONG\n";
-				// wait for host ready for IN packet
-				do
-				{
-					i = UEINTX;
-				} while (!(i & (_BV(TXINI)|(_BV(RXOUTI)))));
-				if (i & _BV(RXOUTI)) return;	// abort
-				// send IN packet
-//				n = len < ENDPOINT0_SIZE ? len : ENDPOINT0_SIZE;
-
-			UEDATX = 0xAB;
-			usb_send_in();
+		else if ( bmRequestType ) {
+			VendorRequest(bRequest);
 			return;
-			/*
-			usb_wait_in_ready();
-			UEDATX = "PONG\n";
-			usb_send_in();
-			return;
-			*/
 		}
 /*
 		else if( bRequest == 0xA3 ) //My request/Device->Host

@@ -136,12 +136,13 @@ int SendTx(libusb_transfer* tx, int seconds = 0)
 }
 
 #define PING 0xA1
+#define MOTOR_INFO 0xA3
 
 void send_ping() {
 	unsigned char b[16];
 	clock_gettime(CLOCK_REALTIME, &m_pollTime);
 	int r = libusb_control_transfer( devh,
-		LIBUSB_ENDPOINT_OUT | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE, //reqtype
+		LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE, //reqtype
 		PING, //request
 		0x0100, //wValue
 		0x0000, //wIndex
@@ -154,11 +155,33 @@ void send_ping() {
 		fprintf( stderr,  "Error: Recieving control data: %s\n", libusb_error_name (r) );
 		exit(1);
 	}	
-	else if (r>1)
+	else if (r>0)
 	{
-		printf("%s", frontbuffer);
-//		OutputData(frontbuffer+1, r-1);
-//		printf("\n");
+		printf("%s\n", b);
+	}
+}
+
+void get_motor_info() {
+	unsigned char b[16];
+	clock_gettime(CLOCK_REALTIME, &m_pollTime);
+	int r = libusb_control_transfer( devh,
+		LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE | 0x88, //reqtype
+		MOTOR_INFO, //request
+		0x0100, //wValue
+		0x0000, //wIndex
+		b,
+		4,
+		1000 );
+
+	if( r <= 0 )
+	{
+		fprintf( stderr,  "Error: Recieving control data: %s\n", libusb_error_name (r) );
+		exit(1);
+	}	
+	else if (r>0)
+	{
+		uint32_t x = *((uint32_t*)b);
+		printf("%d motor %x\n", r,x);
 	}
 }
 
@@ -339,7 +362,8 @@ int r;
 	while(1)
 	{
 		send_ping();
-		printf("loop\n");
+		get_motor_info();
+//		printf("loop\n");
 	tv.tv_sec = 0;
 	tv.tv_usec = 1000;
 

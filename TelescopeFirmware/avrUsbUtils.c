@@ -2,6 +2,16 @@
 #include <avr/io.h>
 #include "avrUsbUtils.h"
 
+void usb_write_str(const char* cs) {
+	char c;
+	while( c = *(cs++) ) UEDATX = c;
+}
+
+void usb_write(const char* d, uint8_t l) {
+	uint8_t i;
+	for(i<0;i<l;++i) UEDATX = d[i];
+}
+
 uint8_t UsbWrite(uint8_t endpoint, uint8_t* data, uint8_t length)
 {
 	int i = 0;

@@ -1,6 +1,9 @@
 #ifndef AVRUSBUTILS_H
 #define AVRUSBUTILS_H
 
+#include <avr/io.h>
+//#include <avr/pgmspace.h>
+//#include <avr/interrupt.h>
 #include <stdint.h>
 
 //pass UEINTX into these macros, or a register containing UEINTX value
@@ -16,6 +19,27 @@ uint8_t UsbWrite_Blocking(uint8_t endpoint, uint8_t* data, uint8_t length);
 
 uint8_t UsbRead_Blocking(uint8_t endpoint, uint8_t* data, uint8_t maxlength);
 
+void usb_write_str(const char* cs);
+void usb_write(const char* d, uint8_t l);
+
+
+
+static inline void usb_wait_in_ready(void)
+{
+	while (!(UEINTX & (1<<TXINI))) ;
+}
+static inline void usb_send_in(void)
+{
+	UEINTX = ~(1<<TXINI);
+}
+static inline void usb_wait_receive_out(void)
+{
+	while (!(UEINTX & (1<<RXOUTI))) ;
+}
+static inline void usb_ack_out(void)
+{
+	UEINTX = ~(1<<RXOUTI);
+}
 
 #endif
 

@@ -50,9 +50,6 @@
 #define CDC_GET_LINE_CODING		0x21
 #define CDC_SET_CONTROL_LINE_STATE	0x22
 
-#define PING 0xA1
-#define PONG 0xA2
-
 // You can change these to give your code its own name.
 #define STR_MANUFACTURER	L"Allensw"
 #define STR_PRODUCT		L"Telescope Firmware v0.1"
