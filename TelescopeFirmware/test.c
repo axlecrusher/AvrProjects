@@ -19,9 +19,11 @@
 //#define PWM_MIN 4896
 
 #define MOTORMASK 0x03
+
+#define STOP 0x00
 #define FORWARD 0x01
 #define BACKWARD 0x02
-#define STOP 0x00
+#define BRAKE 0x03
 
 volatile uint32_t rcount;
 volatile uint8_t direction;
@@ -36,7 +38,8 @@ ISR(TIMER1_OVF_vect)
 ISR(TIMER1_COMPA_vect)
 {
 	//interrupt to turn off PWM pulse
-	PORTD = (PORTD & ~MOTORMASK) | 0x03; //brake mode
+//	PORTD = (PORTD & ~MOTORMASK) | BRAKE;
+	PORTD = (PORTD & ~MOTORMASK) | STOP;
 }
 
 ISR(INT2_vect)
@@ -145,11 +148,12 @@ void slew(int32_t *dx)
 	if (adx<0xF)	
 		set_motor_pwm(0);
 	else if (adx<0x800)
-		set_motor_pwm(PWM_MIN);
+		set_motor_pwm(PWM_MIN*8);
 	else if (adx<0x1000)
 		set_motor_pwm(PWM_MIN*2);
 	else
 		set_motor_pwm(0xffff);
+		
 }
 
 extern uint8_t doUSBstuff;
@@ -176,10 +180,10 @@ rcount = 0;
 	sei();
 
 	uint32_t t = 0;
-	uint32_t y_pos = 0x10000 * 2;
+	uint32_t y_pos = 0xFFFFF;
 	forward();
 //	while(1);
-	set_motor_pwm(1);
+	set_motor_pwm(32000);
 
 	while(1)
 	{
@@ -191,6 +195,7 @@ rcount = 0;
 //		if (t>0xff000000) t = 0;
 
 		int32_t sy = (y_pos - t);
+//		int32_t sy = 1000;
 		slew(&sy);
 /*
 		sendhex8(&dy);
