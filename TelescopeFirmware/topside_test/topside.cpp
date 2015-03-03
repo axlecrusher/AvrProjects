@@ -136,7 +136,12 @@ int SendTx(libusb_transfer* tx, int seconds = 0)
 }
 
 #define PING 0xA1
+#define PONG 0xA2
 #define MOTOR_INFO 0xA3
+#define MOTORS_ON 0xA4
+#define MOTORS_OFF 0xA5
+#define GOTO_Y 0xA6
+#define GOTO_X 0xA7
 
 void send_ping() {
 	unsigned char b[16];
@@ -144,6 +149,52 @@ void send_ping() {
 	int r = libusb_control_transfer( devh,
 		LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE, //reqtype
 		PING, //request
+		0x0100, //wValue
+		0x0000, //wIndex
+		b,
+		16,
+		1000 );
+
+	if( r <= 0 )
+	{
+		fprintf( stderr,  "Error: Recieving control data: %s\n", libusb_error_name (r) );
+		exit(1);
+	}	
+	else if (r>0)
+	{
+		printf("%s\n", b);
+	}
+}
+
+void send_Ydest(uint32_t x) {
+	unsigned char* data = (unsigned char*)&x;
+	clock_gettime(CLOCK_REALTIME, &m_pollTime);
+	int r = libusb_control_transfer( devh,
+		LIBUSB_ENDPOINT_OUT | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE, //reqtype
+		GOTO_Y, //request
+		0x0100, //wValue
+		0x0000, //wIndex
+		data,
+		4,
+		1000 );
+
+	if( r <= 0 )
+	{
+		fprintf( stderr,  "Error: Recieving control data: %s\n", libusb_error_name (r) );
+		exit(1);
+	}	
+	else if (r>0)
+	{
+		printf("y:%s\n", data);
+	}
+}
+
+void start_motors() {
+	unsigned char b[16];
+	clock_gettime(CLOCK_REALTIME, &m_pollTime);
+	int r = libusb_control_transfer( devh,
+		LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE, //reqtype
+		MOTORS_ON, //request
 		0x0100, //wValue
 		0x0000, //wIndex
 		b,
@@ -325,9 +376,19 @@ libusb_transfer* MakeBulkTx(uint8_t endpoint, uint16_t bLen)
 }
 
 
-int main()
+int main(int argc, char** argv)
 {
+	char *ptr;
+	uint32_t number = 0;
 	fprintf(stderr,"Telescope Firmware Test\n");
+
+	if (argc==2)
+	{
+
+		number = (uint32_t)strtol(argv[1], &ptr, 16);
+		printf("goto %x\n", number);
+
+	}
 
 	devh =NULL;
 	mState=NODEVICE;
@@ -359,9 +420,14 @@ SendAudioData(t);
 */
 int r;
 	struct timeval tv;
+		send_ping();
+		start_motors();
+		send_Ydest(0xabcdef);
+		send_ping();
 	while(1)
 	{
-		send_ping();
+//		send_ping();
+//	start_motors();
 		get_motor_info();
 //		printf("loop\n");
 	tv.tv_sec = 0;

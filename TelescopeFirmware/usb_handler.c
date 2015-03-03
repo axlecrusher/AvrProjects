@@ -4,10 +4,23 @@
 #define PING 0xA1
 #define PONG 0xA2
 #define MOTOR_INFO 0xA3
+#define MOTORS_ON 0xA4
+#define MOTORS_OFF 0xA5
+#define GOTO_Y 0xA6
+#define GOTO_X 0xA7
+
+#define MOTOR_FLAG_ON 0x01;
 
 extern volatile uint32_t rcount;
+extern volatile uint8_t motorflags;
+extern volatile uint32_t y_pos;
+
+uint32_t RewadSLewDest();
 
 void VendorRequest(uint8_t bRequest) {
+	char* data;
+
+
 	switch(bRequest) {
 		case PING:
 			usb_wait_in_ready();
@@ -16,10 +29,41 @@ void VendorRequest(uint8_t bRequest) {
 			break;
 		case MOTOR_INFO:
 			usb_wait_in_ready();
-			usb_write(&rcount,sizeof(rcount));
+//			usb_write(&rcount,sizeof(rcount));
+			usb_write(&y_pos,sizeof(y_pos));
+			usb_send_in();
+			break;
+		case MOTORS_ON:
+			usb_wait_in_ready();
+//			usb_write(&rcount,sizeof(rcount));
+			motorflags |= MOTOR_FLAG_ON;
+			usb_write_str("OK");
+			usb_send_in();
+			break;
+		case GOTO_Y:
+			usb_wait_in_ready();
+//			usb_write(&rcount,sizeof(rcount));
+//			motorflags |= MOTOR_FLAG_ON;
+			y_pos = RewadSLewDest();
+//			y_pos = 0xf000;
+//usb_ack_out();
+//			usb_send_in();
+			usb_write_str("OK");
 			usb_send_in();
 			break;
 	}
+}
+
+uint32_t RewadSLewDest()
+{
+	uint8_t i;
+	uint32_t d = 0;
+	uint8_t* data = &d;
+
+	for( i = 0; (i < 4) && USB_HAS_SPACE(UEINTX); i++ )
+		data[i] = UEDATX;
+
+	return d;
 }
 
 /*

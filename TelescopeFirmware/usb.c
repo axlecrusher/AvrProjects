@@ -82,15 +82,20 @@ ISR(USB_GEN_vect)
 
 volatile uint8_t doUSBstuff = 0;
 
-
 // USB Endpoint Interrupt - endpoint 0 is handled here.  The
 // other endpoints are manipulated by the user-callable
 // functions, and the start-of-frame interrupt.
 //
 ISR(USB_COM_vect)
 {
-//	doUSBstuff = 1;
+	doUSBstuff = 1;
+//	PollEndpoint0();
+}
+
+void DoUsbThings()
+{
 	PollEndpoint0();
+	doUSBstuff = 0;
 }
 
 void PollEndpoint0()

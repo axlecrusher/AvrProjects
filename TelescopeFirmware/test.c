@@ -28,6 +28,10 @@
 volatile uint32_t rcount;
 volatile uint8_t direction;
 
+
+#define MOTOR_FLAG_ON 0x01
+volatile uint8_t motorflags = 0;
+
 // two output pins need to be driven with pwm so do our own handling of pin toggling using counter interrupts
 ISR(TIMER1_OVF_vect)
 {
@@ -76,7 +80,12 @@ static void setup_clock()
 //0 to 65535
 static void set_motor_pwm(uint32_t t)
 {
-	if (t==0)
+	if (!(motorflags && MOTOR_FLAG_ON))
+	{
+		//disable interrupt
+		TIMSK1 &= ~_BV(TOIE1);
+	}
+	else if (t==0)
 	{
 		//disable interrupt
 		TIMSK1 &= ~_BV(TOIE1);
@@ -134,12 +143,7 @@ void stop() {
 void slew(int32_t *dx)
 {
 	uint32_t adx = labs(*dx);
-/*
-		sendhex8(dx);
-		sendchr(':');
-		sendhex8(&adx);
-		sendchr('\n');
-*/
+ 
 	if (*dx < 0 )
 		backward();
 	else
@@ -147,16 +151,18 @@ void slew(int32_t *dx)
 
 	if (adx<0xF)	
 		set_motor_pwm(0);
-	else if (adx<0x800)
+	else if (adx<0x2000)
+		set_motor_pwm(PWM_MIN*3);
+	else if (adx<0x10000)
 		set_motor_pwm(PWM_MIN*8);
-	else if (adx<0x1000)
-		set_motor_pwm(PWM_MIN*2);
 	else
 		set_motor_pwm(0xffff);
 		
 }
 
 extern uint8_t doUSBstuff;
+
+volatile uint32_t y_pos = 0x0;
 
 int main( void )
 {
@@ -180,13 +186,21 @@ rcount = 0;
 	sei();
 
 	uint32_t t = 0;
-	uint32_t y_pos = 0xFFFFF;
+//	uint32_t y_pos = 0xf77b4;
+	uint32_t yp = 0;
 	forward();
 //	while(1);
-	set_motor_pwm(32000);
+//	set_motor_pwm(32000);
 
 	while(1)
 	{
+		if (doUSBstuff)
+		{
+			DoUsbThings();
+			doUSBstuff = 0;
+		}
+		yp = y_pos;
+
 //		PORTD &= ~_BV(PD6);
 		cli();
 		t=rcount;
@@ -194,7 +208,7 @@ rcount = 0;
 
 //		if (t>0xff000000) t = 0;
 
-		int32_t sy = (y_pos - t);
+		int32_t sy = (yp - t);
 //		int32_t sy = 1000;
 		slew(&sy);
 /*

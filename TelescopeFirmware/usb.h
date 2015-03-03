@@ -9,6 +9,8 @@ void USB_ZeroPrescaler(); //Set main system clock prescalar to raw. (For a 16MHz
 void USB_Init();	  //Initialize USB
 volatile extern char USBInitState; //0 = uninitialized, - = progress, + = ok, 2 = ready to go, all set up!
 
+void DoUsbThings();
+
 #endif
 
 
