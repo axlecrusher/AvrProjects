@@ -15,7 +15,7 @@ extern volatile uint32_t rcount;
 extern volatile uint8_t motorflags;
 extern volatile uint32_t y_pos;
 
-uint32_t RewadSLewDest();
+uint32_t ReadSlewDest();
 
 void VendorRequest(uint8_t bRequest) {
 	char* data;
@@ -29,8 +29,8 @@ void VendorRequest(uint8_t bRequest) {
 			break;
 		case MOTOR_INFO:
 			usb_wait_in_ready();
-//			usb_write(&rcount,sizeof(rcount));
-			usb_write(&y_pos,sizeof(y_pos));
+			usb_write(&rcount,sizeof(rcount));
+//			usb_write(&y_pos,sizeof(y_pos));
 			usb_send_in();
 			break;
 		case MOTORS_ON:
@@ -41,20 +41,37 @@ void VendorRequest(uint8_t bRequest) {
 			usb_send_in();
 			break;
 		case GOTO_Y:
-			usb_wait_in_ready();
+		//LOOK AT
+		//Control-Out (CPU To Us)
+			usb_wait_receive_out();
+//			SPIPutChar( 'Q' );
+//			for( i = 0; i < wLength; i++ )
+//			{
+//				unsigned char c = UEDATX;
+//				sendhex2( c ); 
+//			}
+//			SPIPutChar( '\n' );
+
 //			usb_write(&rcount,sizeof(rcount));
 //			motorflags |= MOTOR_FLAG_ON;
-			y_pos = RewadSLewDest();
+			y_pos = ReadSlewDest();
 //			y_pos = 0xf000;
 //usb_ack_out();
 //			usb_send_in();
-			usb_write_str("OK");
+//			usb_write_str("OK");
+//			usb_send_in();
+			//TXINI
+//			UEINTX = ~(_BV(FIFOCON) | _BV(RXOUTI));
+			usb_ack_out();
+//			usb_write_str("OK");
 			usb_send_in();
+//			usb_wait_in_ready();
+			PORTD =  _BV(PD6);
 			break;
 	}
 }
 
-uint32_t RewadSLewDest()
+uint32_t ReadSlewDest()
 {
 	uint8_t i;
 	uint32_t d = 0;

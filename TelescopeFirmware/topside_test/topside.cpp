@@ -402,7 +402,7 @@ int main(int argc, char** argv)
 	InitUSB();
 
 
-	AUDIOFILE = fopen("audio.raw", "rb");
+//	AUDIOFILE = fopen("audio.raw", "rb");
 /*
 	libusb_transfer* t = MakeBulkTx(0x04 | LIBUSB_ENDPOINT_OUT, DATAGRAM_SIZE);
 ReadAudio(t);
@@ -429,6 +429,7 @@ int r;
 //		send_ping();
 //	start_motors();
 		get_motor_info();
+		send_Ydest(0xabcdef);
 //		printf("loop\n");
 	tv.tv_sec = 0;
 	tv.tv_usec = 1000;

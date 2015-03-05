@@ -120,11 +120,12 @@ static uint8_t PROGMEM config_descriptor[] = {
 /*
 	7,					// bLength
 	5,					// bDescriptorType
-	0x00,		// bEndpointAddress
+	0x80,		// bEndpointAddress
 	0x00,					// bmAttributes
 	ENDPOINT0_SIZE, 0,			// wMaxPacketSize
 	1,					// bInterval
-
+*/
+/*
 	7,					// bLength
 	5,					// bDescriptorType
 	3,		// bEndpointAddress

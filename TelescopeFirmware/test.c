@@ -203,6 +203,7 @@ rcount = 0;
 
 //		PORTD &= ~_BV(PD6);
 		cli();
+		rcount++;
 		t=rcount;
 		sei();
 
