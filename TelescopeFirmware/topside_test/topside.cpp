@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <string.h>
 
+#include "../usb_protocol.h"
+
 #define DATAGRAM_SIZE 64
 
 		libusb_context *usbContext;
@@ -134,14 +136,6 @@ int SendTx(libusb_transfer* tx, int seconds = 0)
 	}
 	*/
 }
-
-#define PING 0xA1
-#define PONG 0xA2
-#define MOTOR_INFO 0xA3
-#define MOTORS_ON 0xA4
-#define MOTORS_OFF 0xA5
-#define GOTO_Y 0xA6
-#define GOTO_X 0xA7
 
 void send_ping() {
 	unsigned char b[16];

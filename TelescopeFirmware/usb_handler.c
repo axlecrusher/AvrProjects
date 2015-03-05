@@ -1,26 +1,21 @@
 #include "avrUsbUtils.h"
 #include "usb_handler.h"
 
-#define PING 0xA1
-#define PONG 0xA2
-#define MOTOR_INFO 0xA3
-#define MOTORS_ON 0xA4
-#define MOTORS_OFF 0xA5
-#define GOTO_Y 0xA6
-#define GOTO_X 0xA7
+#include "usb_protocol.h"
 
-#define MOTOR_FLAG_ON 0x01;
+#define MOTOR_FLAG_X_ON 0x01;
+#define MOTOR_FLAG_Y_ON 0x02;
 
-extern volatile uint32_t rcount;
 extern volatile uint8_t motorflags;
-extern volatile uint32_t y_pos;
+
+extern volatile uint32_t x_pos = 0x0;
+extern volatile uint32_t y_pos = 0x0;
+extern volatile uint32_t x_dest = 0x0;
+extern volatile uint32_t y_dest = 0x0;
 
 uint32_t ReadSlewDest();
 
 void VendorRequest(uint8_t bRequest) {
-	char* data;
-
-
 	switch(bRequest) {
 		case PING:
 			usb_wait_in_ready();
@@ -29,44 +24,34 @@ void VendorRequest(uint8_t bRequest) {
 			break;
 		case MOTOR_INFO:
 			usb_wait_in_ready();
-			usb_write(&rcount,sizeof(rcount));
-//			usb_write(&y_pos,sizeof(y_pos));
+//			usb_write(&x_pos,sizeof(x_pos));
+			usb_write(&y_pos,sizeof(y_pos));
 			usb_send_in();
 			break;
 		case MOTORS_ON:
 			usb_wait_in_ready();
-//			usb_write(&rcount,sizeof(rcount));
-			motorflags |= MOTOR_FLAG_ON;
+			motorflags |= MOTOR_FLAG_Y_ON;
 			usb_write_str("OK");
 			usb_send_in();
 			break;
 		case GOTO_Y:
-		//LOOK AT
-		//Control-Out (CPU To Us)
+			//LOOK AT
+			//Control-Out (CPU To Us)
 			usb_wait_receive_out();
-//			SPIPutChar( 'Q' );
-//			for( i = 0; i < wLength; i++ )
-//			{
-//				unsigned char c = UEDATX;
-//				sendhex2( c ); 
-//			}
-//			SPIPutChar( '\n' );
-
-//			usb_write(&rcount,sizeof(rcount));
-//			motorflags |= MOTOR_FLAG_ON;
-			y_pos = ReadSlewDest();
-//			y_pos = 0xf000;
-//usb_ack_out();
-//			usb_send_in();
-//			usb_write_str("OK");
-//			usb_send_in();
-			//TXINI
-//			UEINTX = ~(_BV(FIFOCON) | _BV(RXOUTI));
+			y_dest = ReadSlewDest();
 			usb_ack_out();
 //			usb_write_str("OK");
 			usb_send_in();
-//			usb_wait_in_ready();
-			PORTD =  _BV(PD6);
+//			PORTD =  _BV(PD6);
+			break;
+		case GOTO_X:
+			//LOOK AT
+			//Control-Out (CPU To Us)
+			usb_wait_receive_out();
+			x_dest = ReadSlewDest();
+			usb_ack_out();
+//			usb_write_str("OK");
+			usb_send_in();
 			break;
 	}
 }
