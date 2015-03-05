@@ -25,7 +25,7 @@
 #define BACKWARD 0x02
 #define BRAKE 0x03
 
-volatile uint32_t rcount;
+//volatile uint32_t rcount = 0x0;
 volatile uint8_t direction;
 
 
@@ -50,25 +50,15 @@ ISR(INT2_vect)
 {
 	uint8_t t = PIND & (_BV(PD2) | _BV(PD3));
 	if (t == _BV(PD2))
-		rcount++;
+		y_pos++;
 }
 
 ISR(INT3_vect)
 {
 
 	uint8_t t1 = PIND & (_BV(PD2) | _BV(PD3));
-	/*
-	uint8_t t2 = PIND & (_BV(PD2) | _BV(PD3));
-	do 
-	{
-		t1=t2;
-		_delay_us (2.0f);
-		t2 = PIND & (_BV(PD2) | _BV(PD3));
-	}
-	while(t1 != t2);
-*/
 	if (t1 == _BV(PD3))
-		rcount--;
+		y_pos--;
 }
 
 static void setup_clock()
@@ -159,19 +149,37 @@ void slew(int32_t *dx)
 		set_motor_pwm(0xffff);
 		
 }
+ //AVR has 512 bytes os ram available
 
 extern uint8_t doUSBstuff;
 
+volatile uint32_t x_pos = 0x0;
 volatile uint32_t y_pos = 0x0;
+volatile uint32_t x_dest = 0x0;
+volatile uint32_t y_dest = 0x0;
+
+int32_t ComputeOffset(volatile uint32_t* pos, volatile uint32_t* dest )
+{
+	uint32_t p,d;
+
+	cli();
+	p=*pos;
+	d=*dest;
+	sei();
+
+	return (d - p);
+}
 
 int main( void )
 {
+	int32_t tmp = 0x0;
+
 	cli();
 
 	EICRA = _BV(ISC21) | _BV(ISC20) | _BV(ISC31) | _BV(ISC30);
 	EIMSK = _BV(INT2) | _BV(INT3);
 
-rcount = 0;
+	y_pos = 0;
 
 //	DDRC = _BV(PC6); //output pin
 	SetupDriverPins();
@@ -185,10 +193,7 @@ rcount = 0;
 
 	sei();
 
-	uint32_t t = 0;
-//	uint32_t y_pos = 0xf77b4;
-	uint32_t yp = 0;
-	forward();
+//	forward();
 //	while(1);
 //	set_motor_pwm(32000);
 
@@ -202,16 +207,11 @@ rcount = 0;
 		yp = y_pos;
 
 //		PORTD &= ~_BV(PD6);
-		cli();
-		rcount++;
-		t=rcount;
-		sei();
 
 //		if (t>0xff000000) t = 0;
 
-		int32_t sy = (yp - t);
-//		int32_t sy = 1000;
-		slew(&sy);
+		tmp = ComputeOffset(&y_pos, &y_dest);
+		slew(&tmp);
 /*
 		sendhex8(&dy);
 		sendchr('\n');
@@ -223,7 +223,7 @@ rcount = 0;
 
 /*
 
-Copyright (c) 2013 Joshua Allen
+Copyright (c) 2015 Joshua Allen
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
