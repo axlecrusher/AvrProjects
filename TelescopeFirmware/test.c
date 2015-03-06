@@ -112,17 +112,19 @@ static void SetupDriverPins()
 void forward() {
 //	PORTD &= ~_BV(PD1);
 //	PORTD |= _BV(PD0);
-	cli();
-	direction = FORWARD;
-	sei();
+	ATOMIC_BLOCK(ATOMIC_FORCEON)
+	{
+		direction = FORWARD;
+	}
 }
 
 void backward() {
 //	PORTD &= ~_BV(PD0);
 //	PORTD |= _BV(PD1);
-	cli();
-	direction = BACKWARD;
-	sei();
+	ATOMIC_BLOCK(ATOMIC_FORCEON)
+	{
+		direction = BACKWARD;
+	}
 }
 
 void stop() {
@@ -162,10 +164,11 @@ int32_t ComputeOffset(vuint32_t* pos, vuint32_t* dest )
 {
 	uint32_t p,d;
 
-	cli();
-	p=*pos;
-	d=*dest;
-	sei();
+	ATOMIC_BLOCK(ATOMIC_FORCEON)
+	{
+		p = *pos;
+		d = *dest;
+	}
 
 	return (d - p);
 }
@@ -199,10 +202,11 @@ int main( void )
 
 	while(1)
 	{
-		if (doUSBstuff)
+		while (doUSBstuff)
 		{
-			DoUsbThings();
 			doUSBstuff = 0;
+			PollEndpoint0();
+//			DoUsbThings();
 		}
 		yp = y_pos;
 

@@ -92,12 +92,13 @@ ISR(USB_COM_vect)
 //	PollEndpoint0();
 }
 
+/*
 void DoUsbThings()
 {
+//	doUSBstuff = 0;
 	PollEndpoint0();
-	doUSBstuff = 0;
 }
-
+*/
 void PollEndpoint0()
 {
 	//this interrupt only happens once so who cares how long it takes
