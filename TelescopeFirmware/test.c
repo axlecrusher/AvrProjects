@@ -10,6 +10,8 @@
 #include "usb.h"
 #include "avrUsbUtils.h"
 
+#include "mytypes.h"
+
 #define STEPCOUNT 6
 //uint8_t steps[STEPCOUNT] = { 0x01, 0x03, 0x02, 0x06, 0x04, 0x05 };
 //uint8_t i = 0;
@@ -25,12 +27,10 @@
 #define BACKWARD 0x02
 #define BRAKE 0x03
 
-//volatile uint32_t rcount = 0x0;
-volatile uint8_t direction;
-
+vuint8_t direction;
 
 #define MOTOR_FLAG_ON 0x01
-volatile uint8_t motorflags = 0;
+vuint8_t motorflags = 0;
 
 // two output pins need to be driven with pwm so do our own handling of pin toggling using counter interrupts
 ISR(TIMER1_OVF_vect)
@@ -151,14 +151,14 @@ void slew(int32_t *dx)
 }
  //AVR has 512 bytes os ram available
 
-extern uint8_t doUSBstuff;
+extern vuint8_t doUSBstuff;
 
-volatile uint32_t x_pos = 0x0;
-volatile uint32_t y_pos = 0x0;
-volatile uint32_t x_dest = 0x0;
-volatile uint32_t y_dest = 0x0;
+vuint32_t x_pos = 0x0;
+vuint32_t y_pos = 0x0;
+vuint32_t x_dest = 0x0;
+vuint32_t y_dest = 0x0;
 
-int32_t ComputeOffset(volatile uint32_t* pos, volatile uint32_t* dest )
+int32_t ComputeOffset(vuint32_t* pos, vuint32_t* dest )
 {
 	uint32_t p,d;
 

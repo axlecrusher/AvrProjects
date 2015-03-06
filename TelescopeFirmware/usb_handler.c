@@ -2,16 +2,16 @@
 #include "usb_handler.h"
 
 #include "usb_protocol.h"
+#include "mytypes.h"
 
 #define MOTOR_FLAG_X_ON 0x01;
 #define MOTOR_FLAG_Y_ON 0x02;
 
-extern volatile uint8_t motorflags;
-
-extern volatile uint32_t x_pos = 0x0;
-extern volatile uint32_t y_pos = 0x0;
-extern volatile uint32_t x_dest = 0x0;
-extern volatile uint32_t y_dest = 0x0;
+extern vuint8_t motorflags;
+extern vuint32_t x_pos = 0x0;
+extern vuint32_t y_pos = 0x0;
+extern vuint32_t x_dest = 0x0;
+extern vuint32_t y_dest = 0x0;
 
 uint32_t ReadSlewDest();
 
