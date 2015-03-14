@@ -179,7 +179,7 @@ void send_Ydest(uint32_t x) {
 	}	
 	else if (r>0)
 	{
-		printf("y:%s\n", data);
+		printf("y:%x\n", data);
 	}
 }
 
@@ -416,14 +416,14 @@ int r;
 	struct timeval tv;
 		send_ping();
 		start_motors();
-		send_Ydest(0xabcdef);
+		send_Ydest(number);
 		send_ping();
 	while(1)
 	{
 //		send_ping();
 //	start_motors();
 		get_motor_info();
-		send_Ydest(0xabcdef);
+//		send_Ydest(0xabcdef);
 //		printf("loop\n");
 	tv.tv_sec = 0;
 	tv.tv_usec = 1000;

@@ -5,6 +5,7 @@
 #include <string.h>
 #include <avr/sfr_defs.h>
 #include <stdlib.h>
+#include <util/atomic.h>
 #include "avr_print.h"
 
 #include "usb.h"
@@ -32,6 +33,17 @@ vuint8_t direction;
 #define MOTOR_FLAG_ON 0x01
 vuint8_t motorflags = 0;
 
+ //AVR has 512 bytes os ram available
+
+// 0xf8900 encoder ticks
+
+extern vuint8_t doUSBstuff;
+
+vuint32_t x_pos = 0x0;
+vuint32_t y_pos = 0x0;
+vuint32_t x_dest = 0x0;
+vuint32_t y_dest = 0x0;
+
 // two output pins need to be driven with pwm so do our own handling of pin toggling using counter interrupts
 ISR(TIMER1_OVF_vect)
 {
@@ -48,6 +60,7 @@ ISR(TIMER1_COMPA_vect)
 
 ISR(INT2_vect)
 {
+//			PORTD ^= _BV(PD6);
 	uint8_t t = PIND & (_BV(PD2) | _BV(PD3));
 	if (t == _BV(PD2))
 		y_pos++;
@@ -55,7 +68,6 @@ ISR(INT2_vect)
 
 ISR(INT3_vect)
 {
-
 	uint8_t t1 = PIND & (_BV(PD2) | _BV(PD3));
 	if (t1 == _BV(PD3))
 		y_pos--;
@@ -112,19 +124,17 @@ static void SetupDriverPins()
 void forward() {
 //	PORTD &= ~_BV(PD1);
 //	PORTD |= _BV(PD0);
-	ATOMIC_BLOCK(ATOMIC_FORCEON)
-	{
+	cli();
 		direction = FORWARD;
-	}
+	sei();
 }
 
 void backward() {
 //	PORTD &= ~_BV(PD0);
 //	PORTD |= _BV(PD1);
-	ATOMIC_BLOCK(ATOMIC_FORCEON)
-	{
+	cli();
 		direction = BACKWARD;
-	}
+	sei();
 }
 
 void stop() {
@@ -151,24 +161,15 @@ void slew(int32_t *dx)
 		set_motor_pwm(0xffff);
 		
 }
- //AVR has 512 bytes os ram available
-
-extern vuint8_t doUSBstuff;
-
-vuint32_t x_pos = 0x0;
-vuint32_t y_pos = 0x0;
-vuint32_t x_dest = 0x0;
-vuint32_t y_dest = 0x0;
 
 int32_t ComputeOffset(vuint32_t* pos, vuint32_t* dest )
 {
 	uint32_t p,d;
 
-	ATOMIC_BLOCK(ATOMIC_FORCEON)
-	{
+	cli();
 		p = *pos;
 		d = *dest;
-	}
+	sei();
 
 	return (d - p);
 }
@@ -195,6 +196,7 @@ int main( void )
 	USB_Init();
 
 	sei();
+	uint8_t tmp8;
 
 //	forward();
 //	while(1);
@@ -202,19 +204,24 @@ int main( void )
 
 	while(1)
 	{
-		while (doUSBstuff)
+		cli();
+		tmp8 = doUSBstuff;
+		sei();
+		if (tmp8)
 		{
-			doUSBstuff = 0;
-			PollEndpoint0();
-//			DoUsbThings();
+				PollEndpoint0();
+				cli();
+				doUSBstuff = 0;
+				sei();
 		}
-		yp = y_pos;
-
-//		PORTD &= ~_BV(PD6);
+//		yp = y_pos;
 
 //		if (t>0xff000000) t = 0;
 
 		tmp = ComputeOffset(&y_pos, &y_dest);
+//		cli();
+//		tmp = 0x1f000;
+//		sei();
 		slew(&tmp);
 /*
 		sendhex8(&dy);
@@ -223,7 +230,7 @@ int main( void )
 	}
 
 	return 0;
-}
+}0xf8900
 
 /*
 

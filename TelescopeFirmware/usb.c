@@ -6,12 +6,15 @@
 #include <stdio.h>
 
 #include "avrUsbUtils.h"
+#include "mytypes.h"
 
 //unsigned char USB_Initialized;
 volatile char USBInitState;
 
 // zero when we are not configured, non-zero when enumerated
 static volatile uint8_t usb_configuration=0;
+
+vuint8_t doUSBstuff = 0;
 
 void USB_ZeroPrescaler()
 {
@@ -80,8 +83,6 @@ ISR(USB_GEN_vect)
 */
 }
 
-volatile uint8_t doUSBstuff = 0;
-
 // USB Endpoint Interrupt - endpoint 0 is handled here.  The
 // other endpoints are manipulated by the user-callable
 // functions, and the start-of-frame interrupt.
@@ -92,13 +93,16 @@ ISR(USB_COM_vect)
 //	PollEndpoint0();
 }
 
-/*
+void PollEndpoint0();
+
 void DoUsbThings()
 {
-//	doUSBstuff = 0;
 	PollEndpoint0();
+	cli();
+	doUSBstuff = 0;
+	sei();
 }
-*/
+
 void PollEndpoint0()
 {
 	//this interrupt only happens once so who cares how long it takes

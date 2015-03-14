@@ -3,19 +3,22 @@
 
 #include "usb_protocol.h"
 #include "mytypes.h"
+#include <avr/interrupt.h>
+
 
 #define MOTOR_FLAG_X_ON 0x01;
 #define MOTOR_FLAG_Y_ON 0x02;
 
 extern vuint8_t motorflags;
-extern vuint32_t x_pos = 0x0;
-extern vuint32_t y_pos = 0x0;
-extern vuint32_t x_dest = 0x0;
-extern vuint32_t y_dest = 0x0;
+extern vuint32_t x_pos;
+extern vuint32_t y_pos;
+extern vuint32_t x_dest;
+extern vuint32_t y_dest;
 
 uint32_t ReadSlewDest();
 
 void VendorRequest(uint8_t bRequest) {
+	uint32_t tmp;
 	switch(bRequest) {
 		case PING:
 			usb_wait_in_ready();
@@ -24,8 +27,12 @@ void VendorRequest(uint8_t bRequest) {
 			break;
 		case MOTOR_INFO:
 			usb_wait_in_ready();
+			cli();
+			tmp = y_pos;
+			sei();
+//			tmp = 0xabcdef;
 //			usb_write(&x_pos,sizeof(x_pos));
-			usb_write(&y_pos,sizeof(y_pos));
+			usb_write(&tmp,sizeof(tmp));
 			usb_send_in();
 			break;
 		case MOTORS_ON:
@@ -38,9 +45,16 @@ void VendorRequest(uint8_t bRequest) {
 			//LOOK AT
 			//Control-Out (CPU To Us)
 			usb_wait_receive_out();
-			y_dest = ReadSlewDest();
+
+			tmp = ReadSlewDest();
+
+			cli();
+			y_dest = tmp;
+			sei();
+
+//			tmp = 0xabcdef;
+//usb_write(&tmp,sizeof(tmp));
 			usb_ack_out();
-//			usb_write_str("OK");
 			usb_send_in();
 //			PORTD =  _BV(PD6);
 			break;
@@ -60,9 +74,10 @@ uint32_t ReadSlewDest()
 {
 	uint8_t i;
 	uint32_t d = 0;
-	uint8_t* data = &d;
+	uint8_t* data = (uint8_t*)&d;
 
-	for( i = 0; (i < 4) && USB_HAS_SPACE(UEINTX); i++ )
+//	for( i = 0; (i < 4) && USB_HAS_SPACE(UEINTX); i++ ) //broken
+	for( i = 0; (i < 4); i++ )
 		data[i] = UEDATX;
 
 	return d;
