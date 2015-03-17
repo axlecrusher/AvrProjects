@@ -17,6 +17,8 @@
 //uint8_t steps[STEPCOUNT] = { 0x01, 0x03, 0x02, 0x06, 0x04, 0x05 };
 //uint8_t i = 0;
 
+#define SLOP_PWM_MIN 1024
+
 #define PWM_MAX 0xffff
 #define PWM_MIN 2448
 //#define PWM_MIN 4896
@@ -44,6 +46,12 @@ vuint32_t y_pos = 0x0;
 vuint32_t x_dest = 0x0;
 vuint32_t y_dest = 0x0;
 
+uint8_t itmp;
+
+// 8bit variables for faster interrupt math
+vuint8_t y_tmp = 0x00;
+vuint8_t x_tmp = 0x00;
+
 // two output pins need to be driven with pwm so do our own handling of pin toggling using counter interrupts
 ISR(TIMER1_OVF_vect)
 {
@@ -60,17 +68,14 @@ ISR(TIMER1_COMPA_vect)
 
 ISR(INT2_vect)
 {
-//			PORTD ^= _BV(PD6);
-	uint8_t t = PIND & (_BV(PD2) | _BV(PD3));
-	if (t == _BV(PD2))
-		y_pos++;
+	if ((PIND & (_BV(PD2) | _BV(PD3))) == _BV(PD2))
+		y_tmp++;
 }
 
 ISR(INT3_vect)
 {
-	uint8_t t1 = PIND & (_BV(PD2) | _BV(PD3));
-	if (t1 == _BV(PD3))
-		y_pos--;
+	if ((PIND & (_BV(PD2) | _BV(PD3))) == _BV(PD3))
+		y_tmp--;
 }
 
 static void setup_clock()
@@ -92,11 +97,13 @@ static void set_motor_pwm(uint32_t t)
 		//disable interrupt
 		TIMSK1 &= ~_BV(TOIE1);
 	}
-	else if (t<PWM_MIN) 
+	/*
+	else if (t<SLOP_PWM_MIN) 
 	{
-		OCR1A = PWM_MIN;
+		OCR1A = SLOP_PWM_MIN;
 		TIMSK1 |= _BV(TOIE1);
 	}
+	*/
 	else
 	{
 		OCR1A = t;		
@@ -162,6 +169,48 @@ void slew(int32_t *dx)
 		
 }
 
+void FindBackwardSlop() {
+	forward();
+	FindSlopRun();
+}
+
+void FindForwardSlop() {
+	backward();
+	FindSlopRun();
+}
+
+void FindSlopRun() {
+	set_motor_pwm(PWM_MAX);
+	_delay_ms(250);
+	set_motor_pwm(PWM_MIN*8);
+	_delay_ms(250);
+	set_motor_pwm(PWM_MIN*3);
+	_delay_ms(250);
+	set_motor_pwm(PWM_MIN);
+	_delay_ms(250);
+	set_motor_pwm(0);
+	_delay_ms(250);
+	y_pos = 0;
+
+	//switch direction
+	if (direction==FORWARD)
+		backward();
+	else
+		forward();
+
+	_delay_ms(250);
+	set_motor_pwm(500); //backtrack slowly
+	_delay_ms(1000);
+	set_motor_pwm(0);
+}
+
+void AutoSlop()
+{
+	motorflags |= 0x01;
+
+	FindForwardSlop();
+}
+
 int32_t ComputeOffset(vuint32_t* pos, vuint32_t* dest )
 {
 	uint32_t p,d;
@@ -202,10 +251,19 @@ int main( void )
 //	while(1);
 //	set_motor_pwm(32000);
 
+AutoSlop();
+
+/*
+AutoSlop();
+while(1);
+*/
 	while(1)
 	{
 		cli();
 		tmp8 = doUSBstuff;
+		//add accumulated radial encoder output
+		y_pos += y_tmp;
+		y_tmp = 0;
 		sei();
 		if (tmp8)
 		{
@@ -222,7 +280,7 @@ int main( void )
 //		cli();
 //		tmp = 0x1f000;
 //		sei();
-		slew(&tmp);
+//		slew(&tmp);
 /*
 		sendhex8(&dy);
 		sendchr('\n');
@@ -230,7 +288,7 @@ int main( void )
 	}
 
 	return 0;
-}0xf8900
+}
 
 /*
 
