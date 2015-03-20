@@ -6,6 +6,11 @@ var	express = require('express'),
 var async = require('async');
 var underscore = require('underscore');
 
+var stellarium = require('./stellarium.js');
+var s = new stellarium();
+
+s.listen();
+
 app.listen(8080);
 
 app.use('/', express.static(__dirname + '/www'));
