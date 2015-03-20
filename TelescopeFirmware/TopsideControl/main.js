@@ -9,7 +9,20 @@ var underscore = require('underscore');
 var stellarium = require('./stellarium.js');
 var s = new stellarium();
 
+var telescope = require('./dumb_scope.js');
+var scope = new telescope();
+
 s.listen();
+
+setInterval(function() {
+	var r = scope.getInfo();
+//	console.log(r);
+	s.updatePosition(r);
+}, 100);
+
+s.on('goto',function(pos){
+	scope.goto(pos.ra,pos.dec);
+})
 
 app.listen(8080);
 
