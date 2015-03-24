@@ -9,7 +9,7 @@ var underscore = require('underscore');
 var stellarium = require('./stellarium.js');
 var s = new stellarium();
 
-var telescope = require('./dumb_scope.js');
+var telescope = require('./allensw_scope.js');
 var scope = new telescope();
 
 s.listen();
