@@ -10,10 +10,12 @@
 #define MOTOR_FLAG_Y_ON 0x02;
 
 extern vuint8_t motorflags;
-extern vuint32_t x_pos;
+//extern vuint32_t x_pos;
 extern vuint32_t y_pos;
-extern vuint32_t x_dest;
+//extern vuint32_t x_dest;
 extern vuint32_t y_dest;
+
+extern vuint32_t gtmp1;
 
 uint32_t ReadSlewDest();
 
@@ -33,6 +35,7 @@ void VendorRequest(uint8_t bRequest) {
 //			tmp = 0xabcdef;
 //			usb_write(&x_pos,sizeof(x_pos));
 			usb_write(&tmp,sizeof(tmp));
+			usb_write(&gtmp1,sizeof(gtmp1));
 			usb_send_in();
 			break;
 		case MOTORS_ON:
@@ -62,7 +65,7 @@ void VendorRequest(uint8_t bRequest) {
 			//LOOK AT
 			//Control-Out (CPU To Us)
 			usb_wait_receive_out();
-			x_dest = ReadSlewDest();
+//			x_dest = ReadSlewDest();
 			usb_ack_out();
 //			usb_write_str("OK");
 			usb_send_in();

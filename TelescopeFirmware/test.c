@@ -39,18 +39,17 @@ vuint8_t motorflags = 0;
 
 // 0xf8900 encoder ticks
 
-extern vuint8_t doUSBstuff;
+extern vuint8_t usbHasEvent;
 
 vuint32_t x_pos = 0x0;
 vuint32_t y_pos = 0x0;
 vuint32_t x_dest = 0x0;
 vuint32_t y_dest = 0x0;
-
-uint8_t itmp;
+vuint32_t gtmp1 = 0;
 
 // 8bit variables for faster interrupt math
-vuint8_t y_tmp = 0x00;
-vuint8_t x_tmp = 0x00;
+vint8_t y_tmp = 0x00;
+vint8_t x_tmp = 0x00;
 
 // two output pins need to be driven with pwm so do our own handling of pin toggling using counter interrupts
 ISR(TIMER1_OVF_vect)
@@ -226,6 +225,7 @@ int32_t ComputeOffset(vuint32_t* pos, vuint32_t* dest )
 int main( void )
 {
 	int32_t tmp = 0x0;
+	uint8_t tmp8;
 
 	cli();
 
@@ -245,13 +245,13 @@ int main( void )
 	USB_Init();
 
 	sei();
-	uint8_t tmp8;
 
+//	motorflags |= 0x01;
+//	set_motor_pwm(PWM_MAX);
 //	forward();
 //	while(1);
-//	set_motor_pwm(32000);
 
-AutoSlop();
+//AutoSlop();
 
 /*
 AutoSlop();
@@ -260,27 +260,17 @@ while(1);
 	while(1)
 	{
 		cli();
-		tmp8 = doUSBstuff;
+//		tmp8 = usbHasEvent;
 		//add accumulated radial encoder output
 		y_pos += y_tmp;
 		y_tmp = 0;
 		sei();
-		if (tmp8)
-		{
-				PollEndpoint0();
-				cli();
-				doUSBstuff = 0;
-				sei();
-		}
-//		yp = y_pos;
 
-//		if (t>0xff000000) t = 0;
+		if (usbHasEvent) ProcessUSB();
 
 		tmp = ComputeOffset(&y_pos, &y_dest);
-//		cli();
-//		tmp = 0x1f000;
-//		sei();
-//		slew(&tmp);
+		gtmp1 = tmp;
+		slew(&tmp);
 /*
 		sendhex8(&dy);
 		sendchr('\n');

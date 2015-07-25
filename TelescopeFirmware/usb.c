@@ -14,7 +14,7 @@ volatile char USBInitState;
 // zero when we are not configured, non-zero when enumerated
 static volatile uint8_t usb_configuration=0;
 
-vuint8_t doUSBstuff = 0;
+vuint8_t usbHasEvent = 0;
 
 void USB_ZeroPrescaler()
 {
@@ -89,17 +89,17 @@ ISR(USB_GEN_vect)
 //
 ISR(USB_COM_vect)
 {
-	doUSBstuff = 1;
+	usbHasEvent = 1;
 //	PollEndpoint0();
 }
 
 void PollEndpoint0();
 
-void DoUsbThings()
+void ProcessUSB()
 {
 	PollEndpoint0();
 	cli();
-	doUSBstuff = 0;
+	usbHasEvent = 0;
 	sei();
 }
 

@@ -3,6 +3,7 @@
 
 typedef volatile uint32_t vuint32_t;
 typedef volatile uint8_t vuint8_t;
+typedef volatile int8_t vint8_t;
 
 #endif
 
