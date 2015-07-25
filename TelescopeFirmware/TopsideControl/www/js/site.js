@@ -12,6 +12,12 @@ $( document ).ready(function() {
 
 		ajaxPost("/api/jog/ra", { jog_value: jog_value });
 	});
+
+	$( 'div.goto input:button' ).click( function(e) {
+		var gv = $('#gotoValue').val();
+		console.log(gv);
+		ajaxPost("/api/goto", { xpos: 0, ypos:gv });
+	});
 });
 
 function jog(value) {

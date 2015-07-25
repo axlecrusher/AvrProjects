@@ -16,7 +16,8 @@ s.listen();
 
 setInterval(function() {
 	var r = scope.getInfo();
-//	console.log(r);
+	console.log(r);
+	scope.get_motor_info();
 	s.updatePosition(r);
 }, 100);
 
@@ -47,6 +48,8 @@ apiRoute.route('/jog/:axis').post(function(request, response) {
 });
 
 apiRoute.route('/goto').post(function(request, response) {
-	console.log(request.body);
+	var data = request.body;
+	console.log(data);
 	response.end(JSON.stringify({status:'slewing'}));
+	scope.goto(data.ypos,0);
 });

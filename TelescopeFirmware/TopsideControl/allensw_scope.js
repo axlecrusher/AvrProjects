@@ -17,7 +17,9 @@ function AllenswScope()
 		self.dest_ra = ra;
 		self.dest_dec = dec;
 
-		self.sendYdest(0x1000);
+		console.log(ra);
+
+		self.sendYdest(self.dest_ra);
 	} 
 
 	self.getInfo = function() {
@@ -73,7 +75,8 @@ function AllenswScope()
 
 	self.sendYdest = function(dec) {
 		var buffer = new Buffer(4);
-		buffer.writeUInt32BE(dec);
+		buffer.writeUInt32LE(dec);
+		console.log(buffer);
 		self.device.controlTransfer(usb.LIBUSB_ENDPOINT_OUT | usb.LIBUSB_REQUEST_TYPE_VENDOR | usb.LIBUSB_RECIPIENT_DEVICE, //reqtype
 			0xA6, //request
 			0x0100, //wValue
@@ -83,6 +86,26 @@ function AllenswScope()
 				if(err) console.log(err);
 				else
 				console.log('sent ydest');
+		});
+	}
+
+	self.get_motor_info = function() {
+		if (self.device == null) return;
+//		var buffer = new Buffer(16);
+//		console.log(buffer);
+		self.device.controlTransfer(usb.LIBUSB_ENDPOINT_IN | usb.LIBUSB_REQUEST_TYPE_VENDOR | usb.LIBUSB_RECIPIENT_DEVICE | 0x88, //reqtype
+			0xA3, //request
+			0x0100, //wValue
+			0x0000, //wIndex
+			16,
+			function(err,data) {
+				if(err) console.log(err);
+				else {
+					console.log(data);
+					console.log(data.readUInt32LE(0));
+					console.log(data.readInt32LE(4));
+//					console.log(data + ' motor ' + x);
+				}
 		});
 	}
 
