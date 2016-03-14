@@ -13,6 +13,8 @@
 
 #include "mytypes.h"
 
+//1015697 //y,declination ticks per 360 degrees
+
 #define STEPCOUNT 6
 //uint8_t steps[STEPCOUNT] = { 0x01, 0x03, 0x02, 0x06, 0x04, 0x05 };
 //uint8_t i = 0;
@@ -23,14 +25,31 @@
 #define PWM_MIN 2448
 //#define PWM_MIN 4896
 
-#define MOTORMASK 0x03
+//_BV(PD0) | _BV(PD1)
+//#define MOTORMASK (_BV(PD0) | _BV(PD1))
+
+//_BV(PD6) | _BV(PD7)
+
+#define MOTORMASK (_BV(PD4) | _BV(PD5) | _BV(PD6) | _BV(PD7))
+
+#define RA_MOTORMASK (_BV(PD4) | _BV(PD5))
+#define DEC_MOTORMASK (_BV(PD6) | _BV(PD7))
+
+#define DEC_BRAKE (_BV(PD6) | _BV(PD7))
+#define RA_BRAKE (_BV(PD4) | _BV(PD5))
 
 #define STOP 0x00
-#define FORWARD 0x01
-#define BACKWARD 0x02
-#define BRAKE 0x03
 
-vuint8_t direction;
+//#define DEC_STOP PORTD &= ~DEC_MOTORMASK
+//#define RA_STOP  PORTD &= ~RA_MOTORMASK
+
+#define DEC_FORWARD _BV(PD6)
+#define DEC_BACKWARD _BV(PD7)
+
+#define RA_FORWARD _BV(PD4)
+#define RA_BACKWARD _BV(PD5)
+
+vuint8_t direction; //why do I need this? Why not set the port directly?
 
 #define MOTOR_FLAG_ON 0x01
 vuint8_t motorflags = 0;
@@ -46,6 +65,8 @@ vuint32_t y_pos = 0x0;
 vuint32_t x_dest = 0x0;
 vuint32_t y_dest = 0x0;
 vuint32_t gtmp1 = 0;
+vint8_t jog_value_dec = 0x00;
+vint8_t jog_value_ra = 0x00;
 
 // 8bit variables for faster interrupt math
 vint8_t y_tmp = 0x00;
@@ -60,21 +81,60 @@ ISR(TIMER1_OVF_vect)
 
 ISR(TIMER1_COMPA_vect)
 {
+	//declination PWM
 	//interrupt to turn off PWM pulse
-//	PORTD = (PORTD & ~MOTORMASK) | BRAKE;
-	PORTD = (PORTD & ~MOTORMASK) | STOP;
+
+//	PORTD = (PORTD & ~RA_MOTORMASK); //STOP
+	PORTD = (PORTD & ~DEC_MOTORMASK) | DEC_BRAKE;
+}
+
+//XXXX compare value B still needs to be set up
+ISR(TIMER1_COMPB_vect)
+{
+	//right ascension PWM
+	//interrupt to turn off PWM pulse
+
+//	PORTD = (PORTD & ~RA_MOTORMASK); //STOP
+	PORTD = (PORTD & ~RA_MOTORMASK) | RA_BRAKE;
+}
+
+ISR(INT0_vect)
+{
+	if ((PIND & (_BV(PD0) | _BV(PD1))) == _BV(PD0))
+		x_tmp++;
+}
+
+ISR(INT1_vect)
+{
+	if ((PIND & (_BV(PD0) | _BV(PD1))) == _BV(PD1))
+		x_tmp--;
 }
 
 ISR(INT2_vect)
 {
+	//declination
 	if ((PIND & (_BV(PD2) | _BV(PD3))) == _BV(PD2))
 		y_tmp++;
 }
 
 ISR(INT3_vect)
 {
+	//declination
 	if ((PIND & (_BV(PD2) | _BV(PD3))) == _BV(PD3))
 		y_tmp--;
+}
+
+static void SetupInterruptPins()
+{
+	EICRA = _BV(ISC01) | _BV(ISC00) | _BV(ISC11) | _BV(ISC10) | _BV(ISC21) | _BV(ISC20) | _BV(ISC31) | _BV(ISC30);
+	EIMSK = _BV(INT2) | _BV(INT3) | _BV(INT0) | _BV(INT1);
+}
+
+static void SetupDriverPins()
+{
+//	DDRD = _BV(PD0) | _BV(PD1);// | _BV(PD6);
+	DDRD = _BV(PD6) | _BV(PD7) | _BV(PD5) | _BV(PD4);
+	PORTD = 0;
 }
 
 static void setup_clock()
@@ -84,7 +144,7 @@ static void setup_clock()
 }
 
 //0 to 65535
-static void set_motor_pwm(uint32_t t)
+void set_motor_pwm(uint16_t t)
 {
 	if (!(motorflags && MOTOR_FLAG_ON))
 	{
@@ -105,7 +165,7 @@ static void set_motor_pwm(uint32_t t)
 	*/
 	else
 	{
-		OCR1A = t;		
+		OCR1A = t;
 		TIMSK1 |= _BV(TOIE1);
 	}
 }
@@ -121,31 +181,44 @@ static void setup_timers()
 	set_motor_pwm(0);
 }
 
-static void SetupDriverPins()
-{
-	DDRD = _BV(PD0) | _BV(PD1) | _BV(PD6);
-	PORTD = 0;
-}
-
-void forward() {
-//	PORTD &= ~_BV(PD1);
-//	PORTD |= _BV(PD0);
+void dec_forward() {
 	cli();
-		direction = FORWARD;
+		PORTD &= ~DEC_MOTORMASK; //per motor controller instrucionts, STOP before switching inputs
+		direction |= DEC_FORWARD;
 	sei();
 }
 
-void backward() {
-//	PORTD &= ~_BV(PD0);
-//	PORTD |= _BV(PD1);
+void dec_backward() {
 	cli();
-		direction = BACKWARD;
+		PORTD &= ~DEC_MOTORMASK; //per motor controller instrucionts, STOP before switching inputs
+		direction |= DEC_BACKWARD;
 	sei();
 }
 
-void stop() {
-	PORTD &= ~(_BV(PD1)|_BV(PD2));
-	direction = STOP;
+void dec_stop() {
+	cli();
+		direction &= ~DEC_MOTORMASK;
+	sei();
+}
+
+void ra_forward() {
+	cli();
+		PORTD &= ~RA_MOTORMASK; //per motor controller instrucionts, STOP before switching inputs
+		direction |= RA_FORWARD;
+	sei();
+}
+
+void ra_backward() {
+	cli();
+		PORTD &= ~RA_MOTORMASK; //per motor controller instrucionts, STOP before switching inputs
+		direction |= RA_BACKWARD;
+	sei();
+}
+
+void ra_stop() {
+	cli();
+		direction &= ~RA_MOTORMASK;
+	sei();
 }
 
 void slew(int32_t *dx)
@@ -168,6 +241,38 @@ void slew(int32_t *dx)
 		
 }
 
+void jog(int8_t dec, int8_t ra)
+{
+	direction=0x0;
+	if (dec < 0)
+		dec_backward();
+	else
+		dec_forward();
+/*
+	if (y>0) {
+		cli();
+		direction = _BV(PD5);
+		sei();
+	}
+	else {
+		cli();
+		direction = _BV(PD4);
+		sei();
+
+	}
+*/
+	int16_t t = abs(x);
+	int16_t t2 = abs(y);
+	if (t2>t) t = t2;
+
+	t <<= 9;
+	t |= 0x1FF;
+
+	gtmp1 = t;
+
+	set_motor_pwm(t);
+}
+/*
 void FindBackwardSlop() {
 	forward();
 	FindSlopRun();
@@ -192,7 +297,7 @@ void FindSlopRun() {
 	y_pos = 0;
 
 	//switch direction
-	if (direction==FORWARD)
+	if (direction==DEC_FORWARD)
 		backward();
 	else
 		forward();
@@ -209,7 +314,7 @@ void AutoSlop()
 
 	FindForwardSlop();
 }
-
+*/
 int32_t ComputeOffset(vuint32_t* pos, vuint32_t* dest )
 {
 	uint32_t p,d;
@@ -222,6 +327,10 @@ int32_t ComputeOffset(vuint32_t* pos, vuint32_t* dest )
 	return (d - p);
 }
 
+void UpdateYPos() {
+
+}
+
 int main( void )
 {
 	int32_t tmp = 0x0;
@@ -229,10 +338,10 @@ int main( void )
 
 	cli();
 
-	EICRA = _BV(ISC21) | _BV(ISC20) | _BV(ISC31) | _BV(ISC30);
-	EIMSK = _BV(INT2) | _BV(INT3);
+	SetupInterruptPins();
 
 	y_pos = 0;
+	x_pos = 0;
 
 //	DDRC = _BV(PC6); //output pin
 	SetupDriverPins();
@@ -264,13 +373,25 @@ while(1);
 		//add accumulated radial encoder output
 		y_pos += y_tmp;
 		y_tmp = 0;
+
+		x_pos += x_tmp;
+		x_tmp = 0;
+//		x_pos=4321;
 		sei();
 
 		if (usbHasEvent) ProcessUSB();
 
 		tmp = ComputeOffset(&y_pos, &y_dest);
-		gtmp1 = tmp;
-		slew(&tmp);
+
+		if ((jog_value_dec == 0) && (jog_value_ra ==0))
+		{
+			gtmp1 = tmp;
+			slew(&tmp);
+		}
+		else
+		{
+			jog(jog_value_dec,jog_value_ra);
+		}
 /*
 		sendhex8(&dy);
 		sendchr('\n');
