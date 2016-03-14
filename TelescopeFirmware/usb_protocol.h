@@ -8,6 +8,7 @@
 #define MOTORS_OFF 0xA5
 #define GOTO_Y 0xA6
 #define GOTO_X 0xA7
+#define JOG 0xA8
 
 #endif
 

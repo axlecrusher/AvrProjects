@@ -10,14 +10,19 @@
 #define MOTOR_FLAG_Y_ON 0x02;
 
 extern vuint8_t motorflags;
-//extern vuint32_t x_pos;
+extern vuint32_t x_pos;
 extern vuint32_t y_pos;
-//extern vuint32_t x_dest;
+extern vuint32_t x_dest;
 extern vuint32_t y_dest;
 
 extern vuint32_t gtmp1;
+extern vint8_t jog_value_dec;
+extern vint8_t jog_value_ra;
 
 uint32_t ReadSlewDest();
+uint8_t ReadUInt8();
+
+extern void set_motor_pwm(uint32_t t);
 
 void VendorRequest(uint8_t bRequest) {
 	uint32_t tmp;
@@ -34,8 +39,17 @@ void VendorRequest(uint8_t bRequest) {
 			sei();
 //			tmp = 0xabcdef;
 //			usb_write(&x_pos,sizeof(x_pos));
-			usb_write(&tmp,sizeof(tmp));
-			usb_write(&gtmp1,sizeof(gtmp1));
+			usb_write((char*)&tmp,sizeof(tmp));
+			usb_write((char*)&gtmp1,sizeof(gtmp1));
+
+			cli();
+			tmp = x_pos;
+			sei();
+//			tmp = 0xabcdef;
+//			usb_write(&x_pos,sizeof(x_pos));
+			usb_write((char*)&tmp,sizeof(tmp));
+//			usb_write((char*)&gtmp1,sizeof(gtmp1));
+
 			usb_send_in();
 			break;
 		case MOTORS_ON:
@@ -70,7 +84,31 @@ void VendorRequest(uint8_t bRequest) {
 //			usb_write_str("OK");
 			usb_send_in();
 			break;
+		case JOG:
+			HandleJog();
+			break;
 	}
+}
+
+void HandleJog() {
+	uint8_t tmp = 0x0;
+	usb_wait_receive_out();
+	tmp = ReadUInt8(); //RA
+	if (tmp==0) {
+//		set_motor_pwm(0);
+		y_dest = y_pos;
+	}
+	jog_value_ra = tmp;
+
+	tmp = ReadUInt8(); //DEC
+	if (tmp==0) {
+//		set_motor_pwm(0);
+		x_dest = x_pos;
+	}
+	jog_value_dec = tmp;
+
+	usb_ack_out();
+	usb_send_in();
 }
 
 uint32_t ReadSlewDest()
@@ -83,6 +121,12 @@ uint32_t ReadSlewDest()
 	for( i = 0; (i < 4); i++ )
 		data[i] = UEDATX;
 
+	return d;
+}
+
+uint8_t ReadUInt8() {
+	uint8_t d = 0;
+	d = UEDATX;
 	return d;
 }
 
