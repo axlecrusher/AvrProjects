@@ -16,7 +16,7 @@ s.listen();
 
 setInterval(function() {
 	var r = scope.getInfo();
-	console.log(r);
+//	console.log(r);
 	scope.get_motor_info();
 	s.updatePosition(r);
 }, 100);
@@ -43,8 +43,13 @@ apiRoute.route('/info').get(function(request, response) {
 
 apiRoute.route('/jog/:axis').post(function(request, response) {
 //	console.log(request);
-	console.log(request.params.axis + ':' + request.body.jog_value);
+//	console.log(request.params.axis + ':' + request.body.jog_value);
+	var data = {ra:0,dec:0};
+	if (request.params.axis === 'ra') data.ra=request.body.jog_value;
+	if (request.params.axis === 'dec') data.dec=request.body.jog_value;
 	response.end(JSON.stringify({status:'ok'}));
+	console.log(data);
+	scope.jog(data.ra,data.dec);
 });
 
 apiRoute.route('/goto').post(function(request, response) {

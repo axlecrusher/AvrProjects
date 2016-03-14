@@ -1,16 +1,22 @@
 $( document ).ready(function() {
-	$( 'div.declination input:button' ).click( function(e) {
+	$( 'div.declination input:button' ).mousedown( function(e) {
 		var jog_value = $(e.currentTarget).attr('jog_value');
-		jog(jog_value);
-
+		console.log(jog_value);
 		ajaxPost("/api/jog/dec", { jog_value: jog_value });
 	});
 
-	$( 'div.rightAscension input:button' ).click( function(e) {
+	$( 'div.rightAscension input:button' ).mousedown( function(e) {
 		var jog_value = $(e.currentTarget).attr('jog_value');
-		jog(jog_value);
-
+		console.log(jog_value);
 		ajaxPost("/api/jog/ra", { jog_value: jog_value });
+	});
+
+	$( 'div.declination input:button' ).mouseup( function(e) {
+		ajaxPost("/api/jog/dec", { jog_value: 0 });
+	});
+
+	$( 'div.rightAscension input:button' ).mouseup( function(e) {
+		ajaxPost("/api/jog/ra", { jog_value: 0 });
 	});
 
 	$( 'div.goto input:button' ).click( function(e) {
@@ -20,11 +26,8 @@ $( document ).ready(function() {
 	});
 });
 
-function jog(value) {
-	console.log(value);
-}
-
 function ajaxPost(url,json) {
+	console.log(url);
 	$.ajax({
 		type: "POST",
 		url: url,

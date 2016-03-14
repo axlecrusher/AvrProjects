@@ -22,6 +22,28 @@ function AllenswScope()
 		self.sendYdest(self.dest_ra);
 	} 
 
+	self.jog = function(ra,dec) {
+		var self = this;
+
+		var buffer = new Buffer(2);
+		buffer.writeInt8(ra, 0);
+		buffer.writeInt8(dec, 1);
+		console.log(buffer);
+
+		if (self.device == null) return;
+
+		self.device.controlTransfer(usb.LIBUSB_ENDPOINT_OUT | usb.LIBUSB_REQUEST_TYPE_VENDOR | usb.LIBUSB_RECIPIENT_DEVICE, //reqtype
+			0xA8, //request
+			0x0100, //wValue
+			0x0000, //wIndex
+			buffer,
+			function(err,data) {
+				if(err) console.log(err);
+				else
+				console.log('sent ydest');
+		});
+	} 
+
 	self.getInfo = function() {
 		var self = this;
 		return {ra:self.ra,dec:self.dec};
@@ -37,7 +59,7 @@ function AllenswScope()
 
 
 	self.findUsbDevice = function() {
-		console.log('looking for device');
+//		console.log('looking for device');
 		var device = usb.findByIds(0xabcd, 0xf013);
 		if (device) {
 			console.log(device);
@@ -49,8 +71,8 @@ function AllenswScope()
 				self.startMotors();
 			});
 		}
-		else
-			console.log('not found');
+//		else
+//			console.log('not found');
 	}
 
 	self.sendPing = function(clbk) {
@@ -62,6 +84,7 @@ function AllenswScope()
 	}
 
 	self.startMotors = function() {
+		if (self.device == null) return;
 		self.device.controlTransfer(usb.LIBUSB_ENDPOINT_IN|usb.LIBUSB_REQUEST_TYPE_VENDOR|usb.LIBUSB_RECIPIENT_DEVICE,
 			0xA4,
 			0x0100, //wValue
@@ -77,6 +100,7 @@ function AllenswScope()
 		var buffer = new Buffer(4);
 		buffer.writeUInt32LE(dec);
 		console.log(buffer);
+		if (self.device == null) return;
 		self.device.controlTransfer(usb.LIBUSB_ENDPOINT_OUT | usb.LIBUSB_REQUEST_TYPE_VENDOR | usb.LIBUSB_RECIPIENT_DEVICE, //reqtype
 			0xA6, //request
 			0x0100, //wValue
@@ -93,6 +117,7 @@ function AllenswScope()
 		if (self.device == null) return;
 //		var buffer = new Buffer(16);
 //		console.log(buffer);
+		if (self.device == null) return;
 		self.device.controlTransfer(usb.LIBUSB_ENDPOINT_IN | usb.LIBUSB_REQUEST_TYPE_VENDOR | usb.LIBUSB_RECIPIENT_DEVICE | 0x88, //reqtype
 			0xA3, //request
 			0x0100, //wValue
@@ -101,9 +126,14 @@ function AllenswScope()
 			function(err,data) {
 				if(err) console.log(err);
 				else {
+					/*
+					//XXXXXX
 					console.log(data);
 					console.log(data.readUInt32LE(0));
 					console.log(data.readInt32LE(4));
+					console.log(data.readUInt32LE(8));
+					*/
+//					console.log(data.readInt32LE(12));
 //					console.log(data + ' motor ' + x);
 				}
 		});
