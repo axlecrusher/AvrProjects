@@ -144,7 +144,7 @@ static void setup_clock()
 }
 
 //0 to 65535
-void set_motor_pwm(uint16_t t)
+void set_motor_pwm(uint16_t t)  //this was a uint32_t, why?
 {
 	if (!(motorflags && MOTOR_FLAG_ON))
 	{
