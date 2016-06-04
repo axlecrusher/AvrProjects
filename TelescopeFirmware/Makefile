@@ -5,8 +5,10 @@ PART = atmega32u2
 PROGPART = m32u2
 CFLAGS = -Wall -O2 -mmcu=$(PART) -DF_CPU=16000000UL
 
-OBJS = test.o usb.o avrUsbUtils.o SPIPrinting.o usb_handler.o
-SRCS = test.c usb.c avrUsbUtils.c SPIPrinting.c usb_handler.c
+#SPIPrinting.o SPIPrinting.c
+
+OBJS = test.o usb.o avrUsbUtils.o usb_handler.o interrupts.o motor_functions.o SPIPrinting.o
+SRCS = test.c usb.c avrUsbUtils.c usb_handler.c interrupts.c motor_functions.c SPIPrinting.c
 
 program.elf : $(OBJS)
 	avr-gcc -I  $(CFLAGS) -Wl,-Map,program.map -o $@ $^ -L/usr/lib/binutils/avr/2.18

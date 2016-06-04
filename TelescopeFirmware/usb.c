@@ -317,6 +317,7 @@ void PollEndpoint0()
 		else
 		{
 			//printf( "UNKREQ: %02X\n", bRequest );
+			/*
 			SPIPutChar( '?' );
 			SPIPutChar( 'R' );
 			sendhex2( bmRequestType );
@@ -326,6 +327,7 @@ void PollEndpoint0()
 			sendhex4( wLength );
 			SPIPutChar( '\n' );
 			sendhex2( bRequest );
+			*/
 		}
 	}
 	UECONX = (1<<STALLRQ) | (1<<EPEN);	// stall

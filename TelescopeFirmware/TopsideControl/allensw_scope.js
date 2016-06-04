@@ -40,7 +40,7 @@ function AllenswScope()
 			function(err,data) {
 				if(err) console.log(err);
 				else
-				console.log('sent ydest');
+				console.log('sent jog');
 		});
 	} 
 
@@ -126,13 +126,11 @@ function AllenswScope()
 			function(err,data) {
 				if(err) console.log(err);
 				else {
-					/*
 					//XXXXXX
 					console.log(data);
-					console.log(data.readUInt32LE(0));
-					console.log(data.readInt32LE(4));
-					console.log(data.readUInt32LE(8));
-					*/
+					console.log("ypos " + data.readInt32LE(0));
+					console.log("xpos " + data.readInt32LE(4));
+					console.log("gtmp1 " + data.readInt32LE(8));
 //					console.log(data.readInt32LE(12));
 //					console.log(data + ' motor ' + x);
 				}

@@ -77,7 +77,7 @@ static const uint8_t PROGMEM endpoint_config_table[] = {
 };
 
 
-static uint8_t PROGMEM device_descriptor[] = {
+const static uint8_t PROGMEM device_descriptor[] = {
 	18,					// bLength
 	1,					// bDescriptorType
 	0x00, 0x00,				// bcdUSB
@@ -96,7 +96,7 @@ static uint8_t PROGMEM device_descriptor[] = {
 
 #define CONFIG_DESCRIPTOR_SIZE (9+9+7)
 
-static uint8_t PROGMEM config_descriptor[] = {
+const static uint8_t PROGMEM config_descriptor[] = {
 	// configuration descriptor, USB spec 9.6.3, page 264-266, Table 9-10
 	9, 					// bLength;
 	2,					// bDescriptorType;
@@ -151,22 +151,22 @@ struct usb_string_descriptor_struct {
 	uint8_t bDescriptorType;
 	int16_t wString[];
 };
-static struct usb_string_descriptor_struct PROGMEM string0 = {
+const static struct usb_string_descriptor_struct PROGMEM string0 = {
 	4,
 	3,
 	{0x0409}
 };
-static struct usb_string_descriptor_struct PROGMEM string1 = {
+const static struct usb_string_descriptor_struct PROGMEM string1 = {
 	sizeof(STR_MANUFACTURER),
 	3,
 	STR_MANUFACTURER
 };
-static struct usb_string_descriptor_struct PROGMEM string2 = {
+const static struct usb_string_descriptor_struct PROGMEM string2 = {
 	sizeof(STR_PRODUCT),
 	3,
 	STR_PRODUCT
 };
-static struct usb_string_descriptor_struct PROGMEM string3 = {
+const static struct usb_string_descriptor_struct PROGMEM string3 = {
 	sizeof(STR_SERIAL),
 	3,
 	STR_SERIAL
@@ -175,7 +175,7 @@ static struct usb_string_descriptor_struct PROGMEM string3 = {
 
 // This table defines which descriptor data is sent for each specific
 // request from the host (in wValue and wIndex).
-static struct descriptor_list_struct {
+const static struct descriptor_list_struct {
 	uint16_t	wValue;
 	uint16_t	wIndex;
 	const uint8_t	*addr;
