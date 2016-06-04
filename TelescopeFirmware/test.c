@@ -136,7 +136,6 @@ while(1);
 
 		x_pos += x_tmp;
 		x_tmp = 0;
-//		x_pos=4321;
 		sei();
 
 		if (usbHasEvent) ProcessUSB();
@@ -150,28 +149,6 @@ while(1);
 			tmp = ComputeOffset(&x_pos,&x_dest);
 			slew_ra(&tmp);
 		}
-/*
-		if (jog_value_dec != 0) {
-			jog_dec(jog_value_dec);
-		}
-*/
-		/*
-		else {
-			tmp = ComputeOffset(&x_pos, &x_dest);
-			slew_dec(&tmp);			
-		}
-*/
-		/*
-		if (jog_value_ra == 0) {
-			jog_ra(jog_value_ra);
-		}
-		*/
-		/*
-		else {
-			tmp = ComputeOffset(&y_pos, &y_dest);
-			slew_ra(&tmp);			
-		}
-		*/
 	}
 	return 0;
 }
