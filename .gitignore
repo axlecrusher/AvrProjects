@@ -4,3 +4,4 @@
 *.elf
 *.lst
 .svn
+node_modules/
