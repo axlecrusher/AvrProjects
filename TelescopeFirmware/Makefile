@@ -20,7 +20,7 @@ program.lst : $(SRCS)
 	avr-gcc -c -g -Wa,-a,-ad $(CFLAGS) $^ > $@
 
 burn : program.hex
-	avrdude -c usbtiny -p $(PROGPART) -U flash:w:program.hex
+	avrdude -c usbtiny -p $(PROGPART) -V -U flash:w:program.hex
 
 slowburn : program.hex
 	avrdude -c usbtiny -p $(PROGPART) -B 1024 -U flash:w:program.hex
