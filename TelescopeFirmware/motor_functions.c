@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <avr/interrupt.h>
 #include "mytypes.h"
-
+#include "SPIPrinting.h"
 #include "defines.h"
 
 #include "motor_functions.h"
@@ -14,6 +14,7 @@ extern vuint32_t gtmp1;
 
 
 void dec_forward() {
+	if ((direction & DEC_FORWARD)>0) return;
 	cli();
 		PORTD &= ~DEC_MOTORMASK; //per motor controller instructions, STOP before switching inputs
 		direction &= ~DEC_MOTORMASK;
@@ -22,6 +23,7 @@ void dec_forward() {
 }
 
 void dec_backward() {
+	if ((direction & DEC_BACKWARD)>0) return;
 	cli();
 		PORTD &= ~DEC_MOTORMASK; //per motor controller instructions, STOP before switching inputs
 		direction &= ~DEC_MOTORMASK;
@@ -37,6 +39,7 @@ void dec_stop() {
 }
 
 void ra_forward() {
+	if ((direction & RA_FORWARD)>0) return;
 	cli();
 		PORTD &= ~RA_MOTORMASK; //per motor controller instructions, STOP before switching inputs
 		direction &= ~RA_MOTORMASK;
@@ -45,6 +48,7 @@ void ra_forward() {
 }
 
 void ra_backward() {
+	if ((direction & RA_BACKWARD)>0) return;
 	cli();
 		PORTD &= ~RA_MOTORMASK; //per motor controller instructions, STOP before switching inputs
 		direction &= ~RA_MOTORMASK;
@@ -76,12 +80,12 @@ void set_ra_pwm(uint16_t t)
 
 void set_dec_pwm(uint16_t t)
 {
-	gtmp1 = t;
 	if (t==0) {
 		dec_stop();
 		OCR1B = 0;//Output Compare Register 1 B
 	}
 	else {
+		//SPIPutChar('b');	
 		OCR1B = t;//Output Compare Register 1 B
 		cli();
 			MOTOR_PWM_MASK |= DEC_MOTORMASK;
@@ -112,7 +116,6 @@ void slew_ra(int32_t *dx)
 void slew_dec(int32_t *dx)
 {
 	uint32_t adx = labs(*dx);
-// 	gtmp1 = adx;
 
 	if (*dx < 0 )
 		dec_backward();
@@ -127,7 +130,6 @@ void slew_dec(int32_t *dx)
 		set_dec_pwm(PWM_MIN*8);
 	else
 		set_dec_pwm(0xffff);
-		
 }
 
 void jog_ra(int8_t x)
