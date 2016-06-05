@@ -32,14 +32,15 @@ void HandleJog() {
 
 	tmp = ReadUInt8(); //RA
 	jog_value_ra = tmp;
-	jog_ra(jog_value_ra);
 
 	tmp = ReadUInt8(); //DEC
 	jog_value_dec = tmp;
-	jog_dec(jog_value_dec);
 
 	usb_ack_out();
 	usb_send_in();
+
+	jog_ra(jog_value_ra);
+	jog_dec(jog_value_dec);
 }
 
 void VendorRequest(uint8_t bRequest) {
