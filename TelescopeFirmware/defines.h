@@ -18,10 +18,10 @@
 
 //_BV(PD6) | _BV(PD7)
 
-#define MOTORMASK (_BV(PD4) | _BV(PD5) | _BV(PD6) | _BV(PD7))
-
 #define RA_MOTORMASK (_BV(PD4) | _BV(PD5))
 #define DEC_MOTORMASK (_BV(PD6) | _BV(PD7))
+
+#define MOTORMASK (_BV(PD4) | _BV(PD5) | _BV(PD6) | _BV(PD7))
 
 #define DEC_BRAKE (_BV(PD6) | _BV(PD7))
 #define RA_BRAKE (_BV(PD4) | _BV(PD5))
