@@ -126,6 +126,7 @@ while(1);
 //		set_dec_pwm(0x1fff);
 //		ra_forward();
 //		set_ra_pwm(0x3fff);
+
 	while(1)
 	{
 		cli();
@@ -141,14 +142,15 @@ while(1);
 		if (usbHasEvent) ProcessUSB();
 
 		if (jog_value_dec == 0) {
-			tmp = ComputeOffset(&y_pos,&y_dest);
+			tmp = ComputeOffset(&y_pos,&y_dest); //pid error value
 			slew_dec(&tmp);
 		}
 
 		if (jog_value_ra == 0) {
-			tmp = ComputeOffset(&x_pos,&x_dest);
+			tmp = ComputeOffset(&x_pos,&x_dest); //pid error value
 			slew_ra(&tmp);
 		}
+
 	}
 	return 0;
 }

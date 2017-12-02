@@ -37,4 +37,7 @@
 #define RA_FORWARD _BV(PD4)
 #define RA_BACKWARD _BV(PD5)
 
+#define RA_TICKS 0XF8900
+#define DEC_TICKS 0XF8900
+
 #endif

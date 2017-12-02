@@ -3,7 +3,7 @@ CC=avr-gcc
 
 PART = atmega32u2
 PROGPART = m32u2
-CFLAGS = -Wall -O2 -mmcu=$(PART) -DF_CPU=16000000UL
+CFLAGS = -Wall -O2 -g -mmcu=$(PART) -DF_CPU=16000000UL
 
 #SPIPrinting.o SPIPrinting.c
 
