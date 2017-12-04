@@ -81,7 +81,7 @@ void send_byte(uint8_t x) {
 	//this ASM is tuned for an AVR that runs at 8MHz
 	asm volatile(
 		"sbi 0x18, 1\n\t"	//data port on
-		"ror %0\n\t"		//rotate left into carry
+		"rol %0\n\t"		//rotate left into carry
 		"brcs .+8\n\t"		//jump to onebit if carry is set, 2 ticks
 		"cbi 0x18, 1\n\t"	//start of zero bit, data port off
 		"rjmp .+0\n\t"		//2 tick no op
@@ -95,7 +95,7 @@ void send_byte(uint8_t x) {
 
 		//start of the next bit
 		"sbi 0x18, 1\n\t"	//data port on
-		"ror %0\n\t"		//rotate left into carry
+		"rol %0\n\t"		//rotate left into carry
 		"brcs .+8\n\t"		//jump to onebit if carry is set, 2 ticks
 		"cbi 0x18, 1\n\t"	//start of zero bit, data port off
 		"rjmp .+0\n\t"		//2 tick no op
@@ -108,7 +108,7 @@ void send_byte(uint8_t x) {
 		"nop\n\t"
 
 		"sbi 0x18, 1\n\t"	//data port on
-		"ror %0\n\t"		//rotate left into carry
+		"rol %0\n\t"		//rotate left into carry
 		"brcs .+8\n\t"		//jump to onebit if carry is set, 2 ticks
 		"cbi 0x18, 1\n\t"	//start of zero bit, data port off
 		"rjmp .+0\n\t"		//2 tick no op
@@ -121,7 +121,7 @@ void send_byte(uint8_t x) {
 		"nop\n\t"
 
 		"sbi 0x18, 1\n\t"	//data port on
-		"ror %0\n\t"		//rotate left into carry
+		"rol %0\n\t"		//rotate left into carry
 		"brcs .+8\n\t"		//jump to onebit if carry is set, 2 ticks
 		"cbi 0x18, 1\n\t"	//start of zero bit, data port off
 		"rjmp .+0\n\t"		//2 tick no op
@@ -134,7 +134,7 @@ void send_byte(uint8_t x) {
 		"nop\n\t"
 
 		"sbi 0x18, 1\n\t"	//data port on
-		"ror %0\n\t"		//rotate left into carry
+		"rol %0\n\t"		//rotate left into carry
 		"brcs .+8\n\t"		//jump to onebit if carry is set, 2 ticks
 		"cbi 0x18, 1\n\t"	//start of zero bit, data port off
 		"rjmp .+0\n\t"		//2 tick no op
@@ -147,7 +147,7 @@ void send_byte(uint8_t x) {
 		"nop\n\t"
 
 		"sbi 0x18, 1\n\t"	//data port on
-		"ror %0\n\t"		//rotate left into carry
+		"rol %0\n\t"		//rotate left into carry
 		"brcs .+8\n\t"		//jump to onebit if carry is set, 2 ticks
 		"cbi 0x18, 1\n\t"	//start of zero bit, data port off
 		"rjmp .+0\n\t"		//2 tick no op
@@ -160,7 +160,7 @@ void send_byte(uint8_t x) {
 		"nop\n\t"
 
 		"sbi 0x18, 1\n\t"	//data port on
-		"ror %0\n\t"		//rotate left into carry
+		"rol %0\n\t"		//rotate left into carry
 		"brcs .+8\n\t"		//jump to onebit if carry is set, 2 ticks
 		"cbi 0x18, 1\n\t"	//start of zero bit, data port off
 		"rjmp .+0\n\t"		//2 tick no op
@@ -173,7 +173,7 @@ void send_byte(uint8_t x) {
 		"nop\n\t"
 
 		"sbi 0x18, 1\n\t"	//data port on
-		"ror %0\n\t"		//rotate left into carry
+		"rol %0\n\t"		//rotate left into carry
 		"brcs .+8\n\t"		//jump to onebit if carry is set, 2 ticks
 		"cbi 0x18, 1\n\t"	//start of zero bit, data port off
 		"rjmp .+0\n\t"		//2 tick no op
