@@ -75,121 +75,49 @@ static void setup_adc()
 */
 
 #define NOP asm volatile ("nop;")
-void send_byte(uint8_t x) {
-	uint8_t ctr; //wtf?
+void send_bytes(uint8_t* x, uint8_t size) {
+	int8_t itr;
 
-	//this ASM is tuned for an AVR that runs at 8MHz
-	asm volatile(
-		"sbi 0x18, 1\n\t"	//data port on
-		"rol %0\n\t"		//rotate left into carry
-		"brcs .+8\n\t"		//jump to onebit if carry is set, 2 ticks
-		"cbi 0x18, 1\n\t"	//start of zero bit, data port off
-		"rjmp .+0\n\t"		//2 tick no op
-		"nop\n\t"
-		"rjmp .+10 ; to nextbit\n\t" 	//jump to the start of the next bit
-		"nop; onebit\n\t" //start of one bit
-		"nop\n\t"
-		"cbi 0x18, 1\n\t"	//turn off data port
-		"nop\n\t"
-		"nop\n\t"
+	uint8_t high, low, i, byte;
 
-		//start of the next bit
-		"sbi 0x18, 1\n\t"	//data port on
-		"rol %0\n\t"		//rotate left into carry
-		"brcs .+8\n\t"		//jump to onebit if carry is set, 2 ticks
-		"cbi 0x18, 1\n\t"	//start of zero bit, data port off
-		"rjmp .+0\n\t"		//2 tick no op
-		"nop\n\t"
-		"rjmp .+10 ; to nextbit\n\t" 	//jump to the start of the next bit
-		"nop; onebit\n\t" //start of one bit
-		"nop\n\t"
-		"cbi 0x18, 1\n\t"	//turn off data port
-		"nop\n\t"
-		"nop\n\t"
+	cli();
 
-		"sbi 0x18, 1\n\t"	//data port on
-		"rol %0\n\t"		//rotate left into carry
-		"brcs .+8\n\t"		//jump to onebit if carry is set, 2 ticks
-		"cbi 0x18, 1\n\t"	//start of zero bit, data port off
-		"rjmp .+0\n\t"		//2 tick no op
-		"nop\n\t"
-		"rjmp .+10 ; to nextbit\n\t" 	//jump to the start of the next bit
-		"nop; onebit\n\t" //start of one bit
-		"nop\n\t"
-		"cbi 0x18, 1\n\t"	//turn off data port
-		"nop\n\t"
-		"nop\n\t"
+	high = PORTB | _BV(PB1);
+	low = high & ~_BV(PB1);
 
-		"sbi 0x18, 1\n\t"	//data port on
-		"rol %0\n\t"		//rotate left into carry
-		"brcs .+8\n\t"		//jump to onebit if carry is set, 2 ticks
-		"cbi 0x18, 1\n\t"	//start of zero bit, data port off
-		"rjmp .+0\n\t"		//2 tick no op
-		"nop\n\t"
-		"rjmp .+10 ; to nextbit\n\t" 	//jump to the start of the next bit
-		"nop; onebit\n\t" //start of one bit
-		"nop\n\t"
-		"cbi 0x18, 1\n\t"	//turn off data port
-		"nop\n\t"
-		"nop\n\t"
+	while(i<size) {
+		byte = x[i++];
 
-		"sbi 0x18, 1\n\t"	//data port on
-		"rol %0\n\t"		//rotate left into carry
-		"brcs .+8\n\t"		//jump to onebit if carry is set, 2 ticks
-		"cbi 0x18, 1\n\t"	//start of zero bit, data port off
-		"rjmp .+0\n\t"		//2 tick no op
-		"nop\n\t"
-		"rjmp .+10 ; to nextbit\n\t" 	//jump to the start of the next bit
-		"nop; onebit\n\t" //start of one bit
-		"nop\n\t"
-		"cbi 0x18, 1\n\t"	//turn off data port
-		"nop\n\t"
-		"nop\n\t"
+		//this ASM is tuned for an AVR that runs at 8MHz
+		asm volatile(
+			"push %1\n\t"
+			"ldi %0, 7\n\t"	//loop over 8 bits
+			"cln\n\t"		//clear negative flag
 
-		"sbi 0x18, 1\n\t"	//data port on
-		"rol %0\n\t"		//rotate left into carry
-		"brcs .+8\n\t"		//jump to onebit if carry is set, 2 ticks
-		"cbi 0x18, 1\n\t"	//start of zero bit, data port off
-		"rjmp .+0\n\t"		//2 tick no op
-		"nop\n\t"
-		"rjmp .+10 ; to nextbit\n\t" 	//jump to the start of the next bit
-		"nop; onebit\n\t" //start of one bit
-		"nop\n\t"
-		"cbi 0x18, 1\n\t"	//turn off data port
-		"nop\n\t"
-		"nop\n\t"
+			"nextbit%=: brlt loopend%=\n\t"		//check if all bits have been processed
+			"out 0x18, %2\n\t"		//data bit high
+			"rol %1\n\t"			//rotate left into carry
+			"brcs sethigh%=\n\t"	//jump to high bit if carry is set, 2 ticks
+			"setlow%=: nop\n\t"		//begin of set low timing
+			"out 0x18, %3\n\t"		//set data bit low
+			"subi %0, 1\n\t"		//decrement counter
+			"nop\n\t"
+			"nop\n\t"
+			"rjmp nextbit%= ; to nextbit\n\t"	//jump to the start of the next bit
+			"sethigh%=: subi %0, 1\n\t"		//begin of set high timing, decrement counter
+			"nop\n\t"
+			"nop\n\t"
+			"out 0x18, %3\n\t"					//set data bit low
+			"rjmp nextbit%= ; to nextbit\n\t" 	//jump to the start of the next bit
 
-		"sbi 0x18, 1\n\t"	//data port on
-		"rol %0\n\t"		//rotate left into carry
-		"brcs .+8\n\t"		//jump to onebit if carry is set, 2 ticks
-		"cbi 0x18, 1\n\t"	//start of zero bit, data port off
-		"rjmp .+0\n\t"		//2 tick no op
-		"nop\n\t"
-		"rjmp .+10 ; to nextbit\n\t" 	//jump to the start of the next bit
-		"nop; onebit\n\t" //start of one bit
-		"nop\n\t"
-		"cbi 0x18, 1\n\t"	//turn off data port
-		"nop\n\t"
-		"nop\n\t"
+			"loopend%=: nop\n\t"
+			"pop %1\n\t"
+		:	"=&d" (itr)
+		:	"r" (byte), "r" (high), "r" (low), "I" (_SFR_IO_ADDR(PORTB)), "I" (0x01)
+		);
+	}
 
-		"sbi 0x18, 1\n\t"	//data port on
-		"rol %0\n\t"		//rotate left into carry
-		"brcs .+8\n\t"		//jump to onebit if carry is set, 2 ticks
-		"cbi 0x18, 1\n\t"	//start of zero bit, data port off
-		"rjmp .+0\n\t"		//2 tick no op
-		"nop\n\t"
-		"rjmp .+10 ; to nextbit\n\t" 	//jump to the start of the next bit
-		"nop; onebit\n\t" //start of one bit
-		"nop\n\t"
-		"cbi 0x18, 1\n\t"	//turn off data port
-		"nop\n\t"
-		"nop\n\t"
-
-		"nop\n\t" //landing for previous "rjmp .+10 ; to nextbit"
-
-	:	"=&d" (ctr)
-	:	"r" (x), "I" (_SFR_IO_ADDR(PORTB)), "I" (0x01)
-	);
+	sei();
 }
 
 void send_color(uint8_t r, uint8_t g, uint8_t b) {
