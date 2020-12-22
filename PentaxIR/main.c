@@ -7,38 +7,115 @@
 
 /*khz*/
 #define FREQ 38
-#define EXPOSURE_DELAY 6000
+#define EXPOSURE_DELAY 6000  //time to wait between EndExposure and BeginExposure
+
+#define TRUE 1
+#define FALSE 0
+
+#define DEBOUNCE_MS 20
+
+#define LED_ON PORTB |= _BV(PB0);
+#define LED_OFF PORTB &= ~_BV(PB0);
 
 /* variables that can be changed by interrupts */
-volatile uint32_t msec_time = 0;
-volatile uint16_t button_press_ms = 0;
+volatile uint32_t msec_time = 0; //can store 1193.0464708333 hours
+volatile uint16_t button_press_ms = 0; //number of ms button was held down
 volatile uint8_t flags = 0;
+volatile uint8_t squential_presses = 0; //number of sequential presses
 
 /* variables only changed by main loop */
 uint32_t exposure_ms = 1000;
-uint32_t shutter_event_time = 0;
+uint32_t shutter_event_time = 0; //timestamp of next shutter event
 
 void (*DoShutterEvent)() = NULL;
 
-enum
+enum ButtonState
 {
-	BUTTON_UPDATE = 0,
+	BUTTON_UP = 0,
+	BUTTON_DOWN,
 	BUTTON_RELEASED,
-	EXPOSING
+	BUTTON_UPDATE //indicates that interrupt has read the button and set the flags
 };
 
+enum OperationMode
+{
+	MODE_BULB = 0,
+	MODE_DELAY
+};
+
+uint8_t mode = MODE_BULB;
+
+//Interrupt set to execute every 1ms
 ISR(TIMER0_COMPA_vect)
 {
+	static uint32_t last_release_time = 0;
+	static uint16_t stateDuration_ms = 0; //time in the current state
+	static uint8_t buttonState = BUTTON_UP; //track button state
+
 	++msec_time;
 
-	if ((PINB & _BV(PB1))==0) //button down
+	//read button state
+	if ((PINB & _BV(PB1))==0) //button down, pin pulled low
 	{
-		++button_press_ms;
-		flags |= _BV(BUTTON_UPDATE);
+		if (buttonState == BUTTON_UP)
+		{
+			//state changed, reset time
+			stateDuration_ms = 0;
+		}
+
+		buttonState = BUTTON_DOWN;
 	}
-	else if (button_press_ms > 0) //button released, remember to clear button_press_ms later
+	else //button up
 	{
-		flags |= _BV(BUTTON_RELEASED);
+		if (buttonState == BUTTON_DOWN)
+		{
+			stateDuration_ms = 0; //state changed, reset time
+		}
+
+		buttonState = BUTTON_UP;
+	}
+
+	//increment but don't overflow
+	if (stateDuration_ms < 65000) //65 seconds max
+	{
+		++stateDuration_ms;
+	}
+
+	//debounce, consider state only after some time has passed
+	if (stateDuration_ms >= DEBOUNCE_MS)
+	{
+		flags |= _BV(BUTTON_UPDATE); //signal button has been read
+
+		if (buttonState == BUTTON_DOWN)
+		{
+			//this code needs to update every tick the button is down
+			//because button_press_ms needs to be updated each time
+			button_press_ms = stateDuration_ms;
+			flags |= _BV(BUTTON_DOWN); //set button down
+		}
+		else if (buttonState == BUTTON_UP)
+		{
+			flags &= ~_BV(BUTTON_DOWN); //clear button down
+
+			//this code must only run the one tick the button is released
+			if (stateDuration_ms == DEBOUNCE_MS)
+			{
+				const uint32_t delta = msec_time - last_release_time;
+				last_release_time = msec_time;
+				flags |= _BV(BUTTON_RELEASED); //signal button released
+
+				if (delta < 1000) //fast press
+				{
+					++squential_presses;
+//					LED_ON;
+				}
+				else
+				{
+					squential_presses = 1;
+//					LED_OFF;
+				}
+			}
+		}
 	}
 }
 
@@ -67,11 +144,12 @@ void ReportCalibration()
 */
 static void SetupPins()
 {
-	DDRB = _BV(PB0);
+//	DDRB = _BV(PB0); //set pin as output (LED)
+	DDRB = _BV(DDB0); //set pin as output (LED)
 //	PORTB = 0;
 
-	//button input
-	PORTB = _BV(PB1);
+	//DDRB is 0 (input), button input
+	PORTB = _BV(PB1); //set pullup resistor for input pin
 }
 
 uint32_t AtomicRead32(volatile uint32_t* x)
@@ -92,6 +170,15 @@ uint16_t AtomicRead16(volatile uint16_t* x)
 	return a;
 }
 
+uint8_t AtomicRead8(volatile uint8_t* x)
+{
+	uint8_t a;
+	cli();
+	a = *x;
+	sei();
+	return a;
+}
+
 void high(uint16_t msec) {
 	const double pause = (1000/FREQ/2);
 	uint32_t t = msec;
@@ -99,9 +186,9 @@ void high(uint16_t msec) {
 
 	while(AtomicRead32(&msec_time) < t)
 	{
-		PORTB |= _BV(PB0);
+		LED_ON;
 		_delay_us(pause);
-		PORTB &= ~_BV(PB0);
+		LED_OFF;
 		_delay_us(pause);
 	}
 }
@@ -109,12 +196,18 @@ void high(uint16_t msec) {
 void shutterNow()
 {
 	uint8_t i;
+
+	//disable interrupts while signaling shutter
+	cli();
+
 	high(13);
 	_delay_ms(3);
 	for (i=0;i<7;i++) {
 		high(1);
 		_delay_ms(1);
 	};
+
+	sei();
 }
 
 void TryShutterEvent()
@@ -128,8 +221,26 @@ void EndExposure();
 void BeginExposure()
 {
 	shutterNow();
-	shutter_event_time = AtomicRead32(&msec_time) + exposure_ms;
-	DoShutterEvent = EndExposure;
+
+	uint32_t exposeTime = exposure_ms;
+
+	if (mode == MODE_BULB)
+	{
+		exposeTime /= 1000; //to seconds
+		exposeTime *= 60000; //to minutes
+
+		shutter_event_time = AtomicRead32(&msec_time) + exposeTime;
+		DoShutterEvent = EndExposure;
+	}
+	else if (mode == MODE_DELAY)
+	{
+		exposeTime /= 1000; //to seconds
+		exposeTime *= 1000; //back to ms (whole seconds)
+
+		//MODE_DELAY takes a photo every exposure_ms.
+		shutter_event_time = AtomicRead32(&msec_time) + exposeTime;
+		DoShutterEvent = BeginExposure;
+	}
 }
 
 void EndExposure()
@@ -139,57 +250,98 @@ void EndExposure()
 	DoShutterEvent = BeginExposure;
 }
 
-void ButtonFeedback()
+typedef struct
 {
-	uint16_t bt = AtomicRead16(&button_press_ms);
+	uint16_t press_ms;
+	uint8_t squential_presses;
+	uint8_t flags;
+} buttonState;
 
+//Read button state into struct, avoid race conditions
+void readButtonState(buttonState* state)
+{
+	//read all the state info we need and reset while blocking interrupts...
+	//avoid race condition
 	cli();
+
+	state->press_ms = button_press_ms;
+	state->squential_presses = squential_presses;
+	state->flags = flags;
+
+	//clear button update notifications
 	flags &= ~_BV(BUTTON_UPDATE);
+	flags &= ~_BV(BUTTON_RELEASED);
+
 	sei();
+}
+
+void ButtonFeedback(buttonState* state)
+{
+	uint16_t bt = state->press_ms;
 
 	/* illuminate for first half of each elasped second */
 	if ((bt>1000) & ((bt&1023)<500))
 	{
-		PORTB |= _BV(PB0);
+		LED_ON;
 	}
 	else
 	{
-		PORTB &= ~_BV(PB0);
+		LED_OFF;
 	}
 }
 
-void ProcesButton()
+void FlashLED(uint8_t x)
 {
-	uint16_t bt = AtomicRead16(&button_press_ms);
+	for (uint8_t i = 0; i < x; i++)
+	{
+		LED_ON;
+		_delay_ms(100);
+		LED_OFF;
+		_delay_ms(100);
+	}
+}
 
-	cli();
-	flags &= ~_BV(BUTTON_RELEASED);
-	sei();
+//Called after button has been released
+void ProcessButton(buttonState* state)
+{
+	uint16_t timeDown = state->press_ms;
+	uint8_t pressCount = state->squential_presses;
 
-	if (bt == 0) return;
+	if (timeDown == 0) return;
 
 	/* Less than 1 second button press starts/restarts exposure sequence, anything longers sets the exposure time.
 	Every second of depressed time maps to one minute of exposure time.
 	After the exposure time is set, the button must be pressed once for less than a second to start the exposure process. */
-	if (bt < 1000)
+	if (pressCount == 1)
 	{
-		BeginExposure();
+		if (timeDown < 1000)
+		{
+			BeginExposure();
+		}
+		else
+		{
+			exposure_ms = timeDown;
+			DoShutterEvent = NULL;
+		}
 	}
-	else
+	else if (pressCount == 2)
 	{
-		exposure_ms = bt;
-		exposure_ms /= 1000;
-		exposure_ms *= 60000;
-		DoShutterEvent = NULL;
+		//put into bulb mode
+		mode = MODE_BULB;
+		FlashLED(2);
 	}
-
-	cli();
-	button_press_ms = 0;
-	sei();
+	else if (pressCount == 3)
+	{
+		//put into delay mode
+		mode = MODE_DELAY;
+		FlashLED(3);
+	}
 }
 
 int main( void )
 {
+	buttonState state;
+
 	cli();
 
 	SetupPins();
@@ -204,8 +356,14 @@ int main( void )
 	{
 //		ReportCalibration();
 		if (DoShutterEvent != NULL) TryShutterEvent();
-		if ((flags & _BV(BUTTON_UPDATE))>0) ButtonFeedback();
-		if ((flags & _BV(BUTTON_RELEASED))>0) ProcesButton();
+
+		readButtonState(&state);
+
+		if ((state.flags & _BV(BUTTON_UPDATE))>0) //button state has been updated
+		{
+			if ((state.flags & _BV(BUTTON_DOWN))>0) ButtonFeedback(&state);
+			if ((state.flags & _BV(BUTTON_RELEASED))>0) ProcessButton(&state); //BUTTON_RELEASED set when button changes from down to up
+		}
 	}
 
 	return 0;
