@@ -227,7 +227,8 @@ void BeginExposure()
 	if (mode == MODE_BULB)
 	{
 		exposeTime /= 1000; //to seconds
-		exposeTime *= 60000; //to minutes
+		//exposeTime *= 60000; //to minutes
+		exposeTime *= 10000; //multiple of 10 seconds
 
 		shutter_event_time = AtomicRead32(&msec_time) + exposeTime;
 		DoShutterEvent = EndExposure;
