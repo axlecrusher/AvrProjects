@@ -16,6 +16,6 @@ The device is controlled by use of a single button. There are a couple different
 	- Two quick presses put the device into **Bulb** mode. The red LED will quickly flash 3 times.
 	- Three quick presses put the device into **Repeat** mode. The red LED will quickly flash 5 times.
 - Long Press: A button press greater than 1 second will start setting the exposure length or the delay time. While the button is pressed the red LED will blink. Depending on mode, each flash represents:
-	- **Bulb** Mode: Each flash represents 1 minute of exposure.
+	- **Bulb** Mode: Each flash represents 10 second of exposure.
 	- **Repeat** Mode: Each flash represents 1 second of time between exposures.
 
